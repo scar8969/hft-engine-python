@@ -10,9 +10,11 @@ class HFTEngine:
     def __init__(self, symbol: str, start: str, end: str,
                  strategy: str = "sma", fast: int = 20, slow: int = 50,
                  threshold: float = 100.0, initial_capital: float = 10_000.0,
-                 commission: float = 0.0, slippage_bps: float = 0.0):
+                 commission: float = 0.0, slippage_bps: float = 0.0,
+                 rsi_period: int = 14, oversold: float = 30.0, overbought: float = 70.0):
         self.market_data = MarketDataHandler(symbol, start, end)
-        self.strategy = StrategyEngine(strategy, fast, slow, threshold)
+        self.strategy = StrategyEngine(strategy, fast, slow, threshold,
+                                       rsi_period, oversold, overbought)
         self.risk = RiskManager()
         self.orders = OrderManager(initial_capital, commission, slippage_bps)
         self.symbol = symbol

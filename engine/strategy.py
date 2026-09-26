@@ -5,11 +5,16 @@ from .models import MarketData, Order, OrderSide
 
 
 class StrategyEngine:
-    def __init__(self, strategy: str = "sma", fast: int = 20, slow: int = 50, threshold: float = 100.0):
+    def __init__(self, strategy: str = "sma", fast: int = 20, slow: int = 50,
+                 threshold: float = 100.0, rsi_period: int = 14,
+                 oversold: float = 30.0, overbought: float = 70.0):
         self.strategy = strategy
         self.fast = fast
         self.slow = slow
         self.threshold = threshold
+        self.rsi_period = rsi_period
+        self.oversold = oversold
+        self.overbought = overbought
         self.on_signal: Callable[[Order], None] = lambda o: None
 
         self._closes: List[float] = []
@@ -23,6 +28,8 @@ class StrategyEngine:
             self._sma_logic(data)
         elif self.strategy == "threshold":
             self._threshold_logic(data)
+        elif self.strategy == "rsi":
+            self._rsi_logic(data)
         else:
             raise ValueError(f"Unknown strategy: {self.strategy}")
 
@@ -49,6 +56,46 @@ class StrategyEngine:
             self._emit(data, OrderSide.BUY)
         elif data.close >= self.threshold and self._in_position:
             self._emit(data, OrderSide.SELL)
+
+    def _rsi_logic(self, data: MarketData):
+        """Mean reversion: buy when RSI crosses below oversold, sell when it crosses above overbought."""
+        rsi = self._rsi_wilder()
+        if rsi is None:
+            return
+        prev = self._rsi_wilder(offset=1)
+        if prev is None:
+            return
+
+        if prev >= self.oversold and rsi < self.oversold and not self._in_position:
+            self._emit(data, OrderSide.BUY)
+        elif prev <= self.overbought and rsi > self.overbought and self._in_position:
+            self._emit(data, OrderSide.SELL)
+
+    # --- indicators -----------------------------------------------------
+
+    def _rsi_wilder(self, offset: int = 0) -> float | None:
+        """Wilder-smoothed RSI over closes, optionally excluding the last `offset` bars."""
+        closes = self._closes
+        n = self.rsi_period
+        if len(closes) <= n + offset:
+            return None
+        end = len(closes) - offset
+        gains, losses = [], []
+        for i in range(1, end):
+            d = closes[i] - closes[i - 1]
+            gains.append(max(d, 0.0))
+            losses.append(max(-d, 0.0))
+        if len(gains) < n:
+            return None
+        avg_gain = sum(gains[:n]) / n
+        avg_loss = sum(losses[:n]) / n
+        for i in range(n, len(gains)):
+            avg_gain = (avg_gain * (n - 1) + gains[i]) / n
+            avg_loss = (avg_loss * (n - 1) + losses[i]) / n
+        if avg_loss == 0:
+            return 100.0
+        rs = avg_gain / avg_loss
+        return 100.0 - 100.0 / (1.0 + rs)
 
     # --- helpers --------------------------------------------------------
 
