@@ -1,0 +1,16 @@
+name: CI
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt
+      - name: Import check
+        run: python -c "from engine import HFTEngine; print('engine imports ok')"
+      - name: Backtest smoke test
+        run: python main.py --symbol AAPL --start 2023-01-01 --end 2023-06-01 --strategy sma --out /tmp
