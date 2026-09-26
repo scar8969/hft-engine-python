@@ -68,7 +68,7 @@ def main():
     ap.add_argument("--symbol", default="AAPL")
     ap.add_argument("--start", default="2019-01-01")
     ap.add_argument("--end", default="2024-01-01")
-    ap.add_argument("--strategy", choices=["sma", "rsi", "momentum"], default="sma")
+    ap.add_argument("--strategy", choices=["sma", "rsi", "momentum", "threshold"], default="sma")
     ap.add_argument("--train-days", type=int, default=252)
     ap.add_argument("--test-days", type=int, default=63)
     ap.add_argument("--capital", type=float, default=10_000.0)
