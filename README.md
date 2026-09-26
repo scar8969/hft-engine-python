@@ -87,6 +87,8 @@ Interactive backtesting with per-symbol metrics, equity curves, and trade tables
 | `optimize.py` | walk-forward optimization — picks best params on train, validates out-of-sample |
 | `heatmap.py` | 2-param sweep as a return heatmap |
 | `compare.py` | all 4 strategies side-by-side + overlay chart |
+| `portfolio.py` | skfolio portfolio optimization — max Sharpe, min vol, risk parity |
+| `footprint.py` | ATAS-style footprint chart (bid/ask volume per price level per bar) |
 | `papertrade.py` | live paper trading loop (polls latest bar, no real orders) |
 | `alpaca_bridge.py` | live bridge to Alpaca's free paper account |
 
