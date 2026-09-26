@@ -2,6 +2,8 @@
 
 > Event-driven backtesting engine with real order-flow data — market data → strategy → risk → order manager. [Install in 10 seconds.](#install)
 
+![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg) ![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue) ![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen)
+
 ⚡ **Try this first:**
 ```bash
 pip install yfinance pandas numpy matplotlib streamlit websockets
@@ -15,6 +17,11 @@ python main.py --symbol AAPL --start 2023-01-01 --end 2024-01-01 --strategy sma
 ## Why this exists
 
 Most "HFT engines" on GitHub are skeletons — a `MarketDataHandler` with a `NotImplementedException` and a strategy that buys whenever price < 100. This is a from-scratch Python rebuild of [encryptedtouhid/HFT-Engine](https://github.com/encryptedtouhid/HFT-Engine) (C#) that actually ships the backtest loop, transaction costs, portfolio aggregation, walk-forward optimization, and a live order-flow feed — all in ~1500 lines of readable Python.
+
+## Prerequisites
+
+- Python 3.11+
+- pip
 
 ## Install
 
