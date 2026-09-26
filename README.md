@@ -29,6 +29,7 @@ Event-driven architecture, identical component boundaries to the C# original, bu
 - **Event-driven pipeline** — market data handler → strategy → risk → order manager, wired with callbacks exactly like the C# event model
 - **Two strategies**:
   - `sma` — golden/death cross on fast/slow moving averages
+  - `rsi` — mean reversion: buy when RSI crosses below oversold, sell when it crosses above overbought (Wilder smoothing)
   - `threshold` — the original repo's strategy (buy when price < threshold), kept for parity
 - **Transaction costs** — per-order commission + adverse slippage in basis points
 - **Portfolio mode** — comma-separated symbols, equal capital split, combined equity curve
@@ -50,9 +51,25 @@ python main.py --symbol AAPL --start 2023-01-01 --end 2024-01-01 --commission 1 
 # portfolio mode
 python main.py --symbol AAPL,MSFT,GOOGL --start 2022-01-01 --end 2024-01-01
 
+# RSI mean reversion
+python main.py --symbol AAPL --start 2022-01-01 --end 2024-01-01 --strategy rsi
+
+# live paper trading (polls latest bar, no real orders)
+python papertrade.py --symbol AAPL --strategy rsi
+
 # dashboard
 streamlit run dashboard.py
 ```
+
+## Deploy
+
+Railway (Procfile included) or any streamlit-compatible host:
+
+```bash
+railway up   # needs a paid plan after trial
+```
+
+Or HuggingFace Spaces (free): create a Space with SDK "Streamlit", upload the repo, set `HF_TOKEN`.
 
 ## Sample results
 
@@ -60,6 +77,7 @@ streamlit run dashboard.py
 |-----|--------|--------|--------|--------|----------|
 | AAPL 2023, sma 20/50 | +0.50% | -0.55% | 0.62 | 1 | 100% |
 | AAPL 2023, threshold 180 | +7.00% | -1.28% | 2.62 | 4 | 100% |
+| AAPL 2022–24, rsi 14/30/70 | +2.31% | -2.94% | 0.47 | 2 | 100% |
 | SPY 2020–2025, sma 20/50 | +15.33% | -11.81% | 0.64 | 11 | 54.5% |
 | AAPL 2020–2025, sma 20/50 | +9.88% | -4.84% | 0.66 | 14 | 64.3% |
 
@@ -74,13 +92,14 @@ streamlit run dashboard.py
 ```
 engine/
   market_data.py    MarketDataHandler — data feed (yfinance)
-  strategy.py       StrategyEngine — signal generation
+  strategy.py       StrategyEngine — signal generation (sma / rsi / threshold)
   risk.py           RiskManager — pre-trade validation
   order_manager.py  OrderManager — execution, position, equity
   models.py         MarketData / Order / Trade dataclasses
   __init__.py       HFTEngine — event wiring
 backtest.py         metrics (return, drawdown, Sharpe, win rate)
 main.py             CLI
+papertrade.py       live paper trading loop (no real orders)
 dashboard.py        Streamlit UI
 ```
 
