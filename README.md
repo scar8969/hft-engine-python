@@ -107,6 +107,14 @@ Interactive backtesting with per-symbol metrics, equity curves, and trade tables
 | AAPL 2022–24, momentum 50 | +0.45% | -3.74% | 0.10 | 10 | 40% |
 | SPY 2020–2025, sma 20/50 | +15.33% | -11.81% | 0.64 | 11 | 54.5% |
 
+## Tests
+
+```bash
+python -m pytest        # 49 tests, all offline & deterministic — no network, no API keys
+```
+
+Covers strategy signals (golden/death cross, RSI mean-reversion, momentum, C# threshold parity), risk rejections (exposure cap, position cap, boundaries), fill mechanics (slippage bps, commission both ways, avg-entry averaging), backtest metrics math (drawdown, Sharpe, win rate), footprint grid construction, and full engine wiring end-to-end with a stubbed feed. CI runs the suite on every push.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).

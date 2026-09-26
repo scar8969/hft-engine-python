@@ -10,6 +10,8 @@ jobs:
         with:
           python-version: "3.11"
       - run: pip install -r requirements.txt
+      - name: Test suite
+        run: python -m pytest
       - name: Import check
         run: python -c "from engine import HFTEngine; print('engine imports ok')"
       - name: Backtest smoke test

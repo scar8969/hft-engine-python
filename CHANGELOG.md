@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- Pytest suite (`tests/`, 49 tests) — offline, deterministic; CI runs `python -m pytest`
+- Animated footprint demo GIF (`demo_gif.py`, embedded in README)
+- ATAS-style footprint chart (`footprint.py`) from Binance aggTrades — no API key
+- Portfolio optimization (`portfolio.py`) via skfolio — max Sharpe, min vol, risk parity
 - Live order-flow feed (`livefeed.py`) — Binance WebSocket trades + depth, ATAS-style delta/volume bars
 - Strategy comparison tool (`compare.py`)
 - Parameter heatmap tool (`heatmap.py`)
