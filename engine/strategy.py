@@ -7,7 +7,8 @@ from .models import MarketData, Order, OrderSide
 class StrategyEngine:
     def __init__(self, strategy: str = "sma", fast: int = 20, slow: int = 50,
                  threshold: float = 100.0, rsi_period: int = 14,
-                 oversold: float = 30.0, overbought: float = 70.0):
+                 oversold: float = 30.0, overbought: float = 70.0,
+                 mom_period: int = 50):
         self.strategy = strategy
         self.fast = fast
         self.slow = slow
@@ -15,6 +16,7 @@ class StrategyEngine:
         self.rsi_period = rsi_period
         self.oversold = oversold
         self.overbought = overbought
+        self.mom_period = mom_period
         self.on_signal: Callable[[Order], None] = lambda o: None
 
         self._closes: List[float] = []
@@ -30,6 +32,8 @@ class StrategyEngine:
             self._threshold_logic(data)
         elif self.strategy == "rsi":
             self._rsi_logic(data)
+        elif self.strategy == "momentum":
+            self._momentum_logic(data)
         else:
             raise ValueError(f"Unknown strategy: {self.strategy}")
 
@@ -69,6 +73,18 @@ class StrategyEngine:
         if prev >= self.oversold and rsi < self.oversold and not self._in_position:
             self._emit(data, OrderSide.BUY)
         elif prev <= self.overbought and rsi > self.overbought and self._in_position:
+            self._emit(data, OrderSide.SELL)
+
+    def _momentum_logic(self, data: MarketData):
+        """Trend following: buy when return over mom_period is positive, sell when negative."""
+        if len(self._closes) <= self.mom_period:
+            return
+        past = self._closes[-self.mom_period - 1]
+        ret = data.close / past - 1.0
+
+        if ret > 0 and not self._in_position:
+            self._emit(data, OrderSide.BUY)
+        elif ret < 0 and self._in_position:
             self._emit(data, OrderSide.SELL)
 
     # --- indicators -----------------------------------------------------

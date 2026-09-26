@@ -18,6 +18,7 @@ def run_single(args, symbol):
         threshold=args.threshold, initial_capital=args.capital,
         commission=args.commission, slippage_bps=args.slippage,
         rsi_period=args.rsi_period, oversold=args.oversold, overbought=args.overbought,
+        mom_period=args.mom_period,
     )
     orders = engine.run()
     m = compute_metrics(orders.equity_curve, orders.trades, args.capital)
@@ -79,13 +80,14 @@ def main():
     ap.add_argument("--symbol", default="AAPL", help="ticker or comma-separated list (portfolio mode)")
     ap.add_argument("--start", default="2023-01-01")
     ap.add_argument("--end", default="2024-01-01")
-    ap.add_argument("--strategy", choices=["sma", "threshold", "rsi"], default="sma")
+    ap.add_argument("--strategy", choices=["sma", "threshold", "rsi", "momentum"], default="sma")
     ap.add_argument("--fast", type=int, default=20)
     ap.add_argument("--slow", type=int, default=50)
     ap.add_argument("--threshold", type=float, default=100.0)
     ap.add_argument("--rsi-period", type=int, default=14)
     ap.add_argument("--oversold", type=float, default=30.0)
     ap.add_argument("--overbought", type=float, default=70.0)
+    ap.add_argument("--mom-period", type=int, default=50)
     ap.add_argument("--capital", type=float, default=10_000.0)
     ap.add_argument("--commission", type=float, default=0.0, help="$ per order")
     ap.add_argument("--slippage", type=float, default=0.0, help="adverse slippage in basis points")

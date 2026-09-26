@@ -18,13 +18,14 @@ with st.sidebar:
     symbol = st.text_input("Symbol(s)", "AAPL,MSFT").strip().upper()
     start = st.date_input("Start", pd.Timestamp("2022-01-01").date())
     end = st.date_input("End", pd.Timestamp("2024-01-01").date())
-    strategy = st.selectbox("Strategy", ["sma", "threshold", "rsi"])
+    strategy = st.selectbox("Strategy", ["sma", "threshold", "rsi", "momentum"])
     fast = st.slider("Fast SMA", 5, 60, 20)
     slow = st.slider("Slow SMA", 20, 200, 50)
     threshold = st.number_input("Threshold (for threshold strategy)", 50.0, 500.0, 180.0)
     rsi_period = st.slider("RSI period", 2, 30, 14)
     oversold = st.slider("RSI oversold", 10.0, 40.0, 30.0, 1.0)
     overbought = st.slider("RSI overbought", 60.0, 90.0, 70.0, 1.0)
+    mom_period = st.slider("Momentum period", 10, 200, 50)
     capital = st.number_input("Initial capital ($)", 1_000.0, 1_000_000.0, 10_000.0, step=1_000.0)
     commission = st.number_input("Commission ($/order)", 0.0, 50.0, 1.0, step=0.5)
     slippage = st.number_input("Slippage (bps)", 0.0, 100.0, 5.0, step=1.0)
@@ -44,6 +45,7 @@ if run or "last_result" not in st.session_state:
             fast=fast, slow=slow, threshold=threshold,
             initial_capital=per, commission=commission, slippage_bps=slippage,
             rsi_period=rsi_period, oversold=oversold, overbought=overbought,
+            mom_period=mom_period,
         )
         orders = engine.run()
         m = compute_metrics(orders.equity_curve, orders.trades, per)

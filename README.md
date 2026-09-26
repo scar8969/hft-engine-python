@@ -27,12 +27,15 @@ Event-driven architecture, identical component boundaries to the C# original, bu
 ## Features
 
 - **Event-driven pipeline** — market data handler → strategy → risk → order manager, wired with callbacks exactly like the C# event model
-- **Two strategies**:
+- **Four strategies**:
   - `sma` — golden/death cross on fast/slow moving averages
   - `rsi` — mean reversion: buy when RSI crosses below oversold, sell when it crosses above overbought (Wilder smoothing)
+  - `momentum` — trend following: buy when return over `mom_period` is positive, sell when negative
   - `threshold` — the original repo's strategy (buy when price < threshold), kept for parity
 - **Transaction costs** — per-order commission + adverse slippage in basis points
 - **Portfolio mode** — comma-separated symbols, equal capital split, combined equity curve
+- **Walk-forward optimization** — rolling train/test windows, picks best params on train, validates out-of-sample
+- **Alpaca paper trading** — live bridge to Alpaca's free paper account (no real money)
 - **Risk manager** — max exposure ($) and max position (shares) rejection with reasons
 - **Metrics** — total return, max drawdown, annualized Sharpe, win rate, avg win/loss, fees paid
 - **Streamlit dashboard** — interactive config, per-symbol metrics, equity curves, trade table
@@ -54,8 +57,17 @@ python main.py --symbol AAPL,MSFT,GOOGL --start 2022-01-01 --end 2024-01-01
 # RSI mean reversion
 python main.py --symbol AAPL --start 2022-01-01 --end 2024-01-01 --strategy rsi
 
+# momentum
+python main.py --symbol AAPL --start 2022-01-01 --end 2024-01-01 --strategy momentum --mom-period 50
+
+# walk-forward optimization
+python optimize.py --symbol AAPL --start 2020-01-01 --end 2024-01-01 --strategy sma
+
 # live paper trading (polls latest bar, no real orders)
 python papertrade.py --symbol AAPL --strategy rsi
+
+# Alpaca paper trading (needs ALPACA_API_KEY + ALPACA_SECRET_KEY, paper keys)
+python alpaca_bridge.py --symbol AAPL --strategy sma
 
 # dashboard
 streamlit run dashboard.py
@@ -78,6 +90,7 @@ Or HuggingFace Spaces (free): create a Space with SDK "Streamlit", upload the re
 | AAPL 2023, sma 20/50 | +0.50% | -0.55% | 0.62 | 1 | 100% |
 | AAPL 2023, threshold 180 | +7.00% | -1.28% | 2.62 | 4 | 100% |
 | AAPL 2022–24, rsi 14/30/70 | +2.31% | -2.94% | 0.47 | 2 | 100% |
+| AAPL 2022–24, momentum 50 | +0.45% | -3.74% | 0.10 | 10 | 40% |
 | SPY 2020–2025, sma 20/50 | +15.33% | -11.81% | 0.64 | 11 | 54.5% |
 | AAPL 2020–2025, sma 20/50 | +9.88% | -4.84% | 0.66 | 14 | 64.3% |
 
@@ -92,14 +105,16 @@ Or HuggingFace Spaces (free): create a Space with SDK "Streamlit", upload the re
 ```
 engine/
   market_data.py    MarketDataHandler — data feed (yfinance)
-  strategy.py       StrategyEngine — signal generation (sma / rsi / threshold)
+  strategy.py       StrategyEngine — signal generation (sma / rsi / momentum / threshold)
   risk.py           RiskManager — pre-trade validation
   order_manager.py  OrderManager — execution, position, equity
   models.py         MarketData / Order / Trade dataclasses
   __init__.py       HFTEngine — event wiring
 backtest.py         metrics (return, drawdown, Sharpe, win rate)
 main.py             CLI
+optimize.py         walk-forward optimization
 papertrade.py       live paper trading loop (no real orders)
+alpaca_bridge.py    Alpaca paper trading bridge
 dashboard.py        Streamlit UI
 ```
 
