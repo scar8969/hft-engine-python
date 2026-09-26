@@ -92,7 +92,8 @@ Interactive backtesting with per-symbol metrics, equity curves, and trade tables
 | `heatmap.py` | 2-param sweep as a return heatmap |
 | `compare.py` | all 4 strategies side-by-side + overlay chart |
 | `portfolio.py` | skfolio portfolio optimization — max Sharpe, min vol, risk parity |
-| `footprint.py` | ATAS-style footprint chart (bid/ask volume per price level per bar) |
+| `demo_gif.py` | animated footprint demo GIF (embedded above) |
+| `footprint.py` | ATAS-style footprint chart (bid/ask volume per level) |
 | `papertrade.py` | live paper trading loop (polls latest bar, no real orders) |
 | `alpaca_bridge.py` | live bridge to Alpaca's free paper account |
 
