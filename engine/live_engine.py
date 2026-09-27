@@ -43,6 +43,7 @@ class LiveEngine:
         self._task = None
         self._last_price = None
         self._last_signal_ts = None
+        self._tick_count = 0
 
         # wire strategy signals → risk → broker
         self.strategy.on_signal = self._on_signal
@@ -51,10 +52,10 @@ class LiveEngine:
         self._warmup()
 
     # ── warmup: feed history so indicators are ready ────────────────
-    def _warmup(self):
+    def _warmup(self, start: str = "2024-01-01"):
         try:
             from .market_data import MarketDataHandler
-            bars = MarketDataHandler(self.symbol, "2024-01-01",
+            bars = MarketDataHandler(self.symbol, start,
                                      datetime.now().strftime("%Y-%m-%d")).connect()
             for b in bars:
                 self.strategy.on_market_data(b)
@@ -71,10 +72,9 @@ class LiveEngine:
             close=tick["price"], volume=tick.get("qty", 0.0),
         )
         self.strategy.on_market_data(bar)
-        # throttle SQLite journaling: only on every Nth tick (bar-close cadence)
-        n = getattr(self, "_tick_count", 0) + 1
-        self._tick_count = n
-        if n % 10 == 0 or self._last_price is None:
+        # throttle SQLite journaling: journal on first tick, then every 10th
+        self._tick_count += 1
+        if self._tick_count == 1 or self._tick_count % 10 == 0:
             self.store.set_meta("last_bar", json_dumps({"price": tick["price"], "ts": tick["ts"]}))
             pos = self.store.get_position(self.symbol)
             qty = pos["qty"] if pos else 0.0
@@ -97,10 +97,8 @@ class LiveEngine:
         client_id = f"{self.symbol}-{order.side.value}-{int(time.time() * 1000)}"
         bro = self.broker.submit(self.symbol, order.side.value, order.volume,
                                  order.price, client_id=client_id)
-        # latency: real legs from the broker order lifecycle
-        ack_ts = self._last_signal_ts + (bro.get("latency_ms", 0) / 2000)
-        fill_ts = self._last_signal_ts + (bro.get("latency_ms", 0) / 1000)
-        self.latency.record(self._last_signal_ts, ack_ts, fill_ts,
+        # latency: broker returns real ack/fill timestamps from the lifecycle
+        self.latency.record(self._last_signal_ts, bro.get("ack_ts"), bro.get("fill_ts"),
                             (time.time() - self.gateway.last_tick_ts) if self.gateway.last_tick_ts else None)
 
     # ── lifecycle ───────────────────────────────────────────────────
@@ -123,8 +121,8 @@ class LiveEngine:
         if self._task:
             self._task.cancel()
             try:
-                await self._task
-            except (asyncio.CancelledError, Exception):
+                await asyncio.wait_for(self._task, timeout=5)
+            except (asyncio.CancelledError, asyncio.TimeoutError):
                 pass
         self.store.set_meta("engine_state", "stopped")
         print("[live] engine stopped")

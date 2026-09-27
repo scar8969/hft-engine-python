@@ -66,8 +66,10 @@ class MarketGateway:
         import yfinance as yf
         while self._running:
             try:
-                df = yf.download(self.symbol, period="1d", interval="1m",
-                                 progress=False, auto_adjust=True)
+                # blocking download in a thread so the event loop stays responsive
+                df = await asyncio.to_thread(
+                    yf.download, self.symbol, period="1d", interval="1m",
+                    progress=False, auto_adjust=True)
                 if df is not None and not df.empty:
                     if hasattr(df.columns, "levels"):  # MultiIndex flatten
                         df.columns = df.columns.get_level_values(0)

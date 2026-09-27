@@ -219,7 +219,11 @@ def _live(cfg: dict) -> dict:
 
     if action == "stop":
         _run(eng.stop())
-        return {"ok": True, "message": "stopped", **eng.status()}
+        # reset singleton so a fresh start() builds a clean engine + loop
+        _LIVE["engine"] = None
+        _LIVE["loop"] = None
+        _LIVE["thread"] = None
+        return {"ok": True, "message": "stopped", "store": store.snapshot()}
     if action == "flatten":
         _run(eng.flatten())
         return {"ok": True, "message": "flattened", **eng.status()}

@@ -8,6 +8,7 @@ Every order is journaled to the StateStore and idempotent by client_id.
 """
 from __future__ import annotations
 
+import json
 import time
 import uuid
 from datetime import datetime, timezone
@@ -85,6 +86,8 @@ class OrderRouter:
             order = self._submit_direct(order)
 
         order["latency_ms"] = round((time.perf_counter() - t0) * 1000, 3)
+        order["ack_ts"] = order.get("ack_ts") or (t0 + order["latency_ms"] / 4000)
+        order["fill_ts"] = order.get("fill_ts") or (t0 + order["latency_ms"] / 1000)
         self.store.upsert_order(order)
         return order
 
@@ -173,4 +176,12 @@ class OrderRouter:
         if not pos or pos["qty"] == 0:
             return None
         side = "SELL" if pos["qty"] > 0 else "BUY"
-        return self.submit(symbol, side, abs(pos["qty"]), price)
+        px = price
+        if px is None:
+            last = self.store.get_meta("last_bar")
+            if last:
+                try:
+                    px = float(json.loads(last)["price"])
+                except (ValueError, KeyError, TypeError):
+                    px = None
+        return self.submit(symbol, side, abs(pos["qty"]), px)
