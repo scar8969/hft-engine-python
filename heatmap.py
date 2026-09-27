@@ -31,8 +31,8 @@ def main():
         x_name, y_name = "rsi_period", "oversold"
         x_vals, y_vals = [5, 7, 10, 14, 21], [20, 25, 30, 35, 40]
     else:  # momentum
-        x_name, y_name = "mom_period", "mom_period"  # single param, fake grid
-        x_vals, y_vals = [20, 30, 50, 75, 100], [20, 30, 50, 75, 100]
+        x_name, y_name = "mom_period", "threshold"
+        x_vals, y_vals = [20, 30, 50, 75, 100], [50, 100, 150, 200, 250]
 
     grid = np.full((len(y_vals), len(x_vals)), np.nan)
     for j, xv in enumerate(x_vals):
@@ -45,7 +45,7 @@ def main():
             elif args.strategy == "rsi":
                 params = {"rsi_period": xv, "oversold": yv, "overbought": 100 - yv}
             else:
-                params = {"mom_period": xv}
+                params = {"mom_period": xv, "threshold": yv}
 
             engine = HFTEngine(
                 args.symbol, args.start, args.end, strategy=args.strategy,

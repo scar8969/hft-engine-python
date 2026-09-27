@@ -14,7 +14,6 @@ import argparse
 import asyncio
 import json
 import time
-from collections import defaultdict
 from datetime import datetime
 
 import websockets
@@ -70,6 +69,17 @@ class OrderFlowFeed:
             self._update_bar(price, qty, side, ts)
 
     # ── websocket handlers ────────────────────────────────────────────
+    def _apply_depth(self, side_key: str, updates):
+        """Apply a depthUpdate delta to the maintained book (qty 0 = remove level)."""
+        book = dict(self.depth[side_key])
+        for p, q in updates:
+            p, q = float(p), float(q)
+            if q == 0:
+                book.pop(p, None)
+            else:
+                book[p] = q
+        self.depth[side_key] = sorted(book.items(), reverse=(side_key == "bids"))[:10]
+
     async def _handle(self, ws):
         async for raw in ws:
             msg = json.loads(raw)
@@ -88,15 +98,10 @@ class OrderFlowFeed:
                 self.on_trade(price, qty, side, ts)
                 self._last_trade = (price, qty, side, ts)
             elif data["e"] == "depthUpdate":
-                self.depth["bids"] = [(float(p), float(q)) for p, q in data.get("b", [])[:10]]
-                self.depth["asks"] = [(float(p), float(q)) for p, q in data.get("a", [])[:10]]
-            elif "bids" in data and "asks" in data:  # depth20 partial snapshot
-                self.depth["bids"] = [(float(p), float(q)) for p, q in data.get("bids", [])[:10]]
-                self.depth["asks"] = [(float(p), float(q)) for p, q in data.get("asks", [])[:10]]
+                self._apply_depth("bids", data.get("b", []))
+                self._apply_depth("asks", data.get("a", []))
 
     async def run(self, duration: float | None = None):
-        streams = f"{self.symbol}@trade/{self.symbol}@depth20@100ms"
-        # depth20@100ms is a diff stream; also subscribe to the snapshot stream
         streams = f"{self.symbol}@trade/{self.symbol}@depth20@100ms/{self.symbol}@depth20"
         url = BINANCE_WS.format(streams=streams)
         start = time.time()

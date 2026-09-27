@@ -1,8 +1,6 @@
 """Walk-forward optimization: sweep strategy params on rolling train windows, validate on out-of-sample test windows."""
 import argparse
-import itertools
 import sys
-from datetime import datetime
 
 import pandas as pd
 import yfinance as yf

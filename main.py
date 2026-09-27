@@ -44,7 +44,6 @@ def print_report(symbol, args, engine, orders, m, show_trades=True):
             print(f"  {t.entry_time.date()} -> {t.exit_time.date() if t.exit_time else 'OPEN'}  "
                   f"{t.pnl:+.2f} ({t.pnl_pct:+.2f}%)")
 
-
 def save_outputs(args, symbol, orders, out_prefix=""):
     with open(f"{out_prefix}trades.csv", "w", newline="") as f:
         w = csv.writer(f)

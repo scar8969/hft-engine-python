@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>HFT-Engine — Strategies</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        bg: "#000000", panel: "#0a0a0a", panel2: "#111111",
+        line: "#262626", amber: "#ff9900", amberdim: "#b36b00",
+        up: "#00c853", down: "#ff3d3d", txt: "#d9d9d9", dim: "#808080",
+      },
+      fontFamily: { sans: ["Inter", "sans-serif"], mono: ["JetBrains Mono", "monospace"] },
+    },
+  },
+};
+</script>
+<style>
+  .material-symbols-outlined { font-size: 18px; line-height: 1; display: inline-block; vertical-align: middle; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: #050505; }
+  ::-webkit-scrollbar-thumb { background: #262626; border-radius: 3px; }
+</style>
+</head>
+<body class="bg-bg text-txt font-sans antialiased">
+
+<!-- ===== Sidebar ===== -->
+<aside class="fixed top-0 left-0 z-40 h-screen w-14 lg:w-56 flex flex-col bg-[#050505] border-r border-line">
+  <div class="h-14 flex items-center gap-2.5 px-3 border-b border-line shrink-0">
+    <div class="w-8 h-8 rounded bg-panel2 border border-line flex items-center justify-center text-amber text-base">⚡</div>
+    <div class="hidden lg:block">
+      <div class="text-sm font-semibold leading-tight">HFT-Engine</div>
+      <div class="text-[10px] text-dim">Trading simulator</div>
+    </div>
+  </div>
+  <nav class="flex-1 py-3 px-2 flex flex-col gap-1">
+    <a href="index.html" class="flex items-center gap-2.5 px-2.5 py-2 rounded text-sm text-dim hover:text-txt hover:bg-panel2 transition-colors">
+      <span class="material-symbols-outlined">candlestick_chart</span>
+      <span class="hidden lg:inline">Test a Strategy</span>
+    </a>
+    <a href="orderflow.html" class="flex items-center gap-2.5 px-2.5 py-2 rounded text-sm text-dim hover:text-txt hover:bg-panel2 transition-colors">
+      <span class="material-symbols-outlined">query_stats</span>
+      <span class="hidden lg:inline">Live Market</span>
+    </a>
+    <a href="portfolio.html" class="flex items-center gap-2.5 px-2.5 py-2 rounded text-sm text-dim hover:text-txt hover:bg-panel2 transition-colors">
+      <span class="material-symbols-outlined">pie_chart</span>
+      <span class="hidden lg:inline">My Portfolio</span>
+    </a>
+    <a href="strategies.html" class="flex items-center gap-2.5 px-2.5 py-2 rounded text-sm bg-amber/10 text-amber border-l-2 border-amber font-medium">
+      <span class="material-symbols-outlined">psychology</span>
+      <span class="hidden lg:inline">Strategies</span>
+    </a>
+  </nav>
+  <div class="p-3 border-t border-line hidden lg:block">
+    <div class="text-[10px] text-dim">Demo mode — no real money</div>
+  </div>
+</aside>
+
+<!-- ===== Main ===== -->
+<div class="ml-14 lg:ml-56 min-h-screen">
+  <header class="px-6 pt-6 pb-4 border-b border-line">
+    <h1 class="text-2xl font-semibold">Strategies</h1>
+    <p class="text-sm text-dim mt-1">Four built-in trading rules. Pick one, then test it on the Test a Strategy page.</p>
+  </header>
+
+  <main class="p-6 space-y-6 max-w-6xl">
+
+    <!-- Strategy cards -->
+    <section class="grid md:grid-cols-2 gap-4">
+      <div class="bg-panel border border-line rounded-lg p-5 hover:border-amber/50 transition-colors">
+        <div class="flex items-center justify-between mb-2">
+          <span class="material-symbols-outlined text-amber">show_chart</span>
+          <span class="text-[10px] text-amber bg-amber/10 border border-amber/30 px-2 py-0.5 rounded font-semibold">TREND</span>
+        </div>
+        <h2 class="font-semibold">Trend Follower</h2>
+        <p class="text-sm text-dim mt-1">Buys when the trend turns up, sells when it turns down. Good for steady markets.</p>
+        <div class="flex items-center justify-between mt-4 pt-3 border-t border-line/50 text-sm">
+          <span class="text-dim">Win rate <span id="wr-sma" class="text-txt font-mono font-semibold">68.4%</span></span>
+          <span class="text-dim">Growth <span id="gr-sma" class="text-up font-mono font-semibold">+48.6%</span></span>
+        </div>
+      </div>
+
+      <div class="bg-panel border border-line rounded-lg p-5 hover:border-amber/50 transition-colors">
+        <div class="flex items-center justify-between mb-2">
+          <span class="material-symbols-outlined text-[#888888]">trending_up</span>
+          <span class="text-[10px] text-[#888888] bg-[#888888]/10 border border-[#888888]/30 px-2 py-0.5 rounded font-semibold">MEAN-REV</span>
+        </div>
+        <h2 class="font-semibold">Bounce Back</h2>
+        <p class="text-sm text-dim mt-1">Buys when a stock drops too fast, sells when it rises too fast. Good for choppy markets.</p>
+        <div class="flex items-center justify-between mt-4 pt-3 border-t border-line/50 text-sm">
+          <span class="text-dim">Win rate <span id="wr-rsi" class="text-txt font-mono font-semibold">62.1%</span></span>
+          <span class="text-dim">Growth <span id="gr-rsi" class="text-up font-mono font-semibold">+34.2%</span></span>
+        </div>
+      </div>
+
+      <div class="bg-panel border border-amber rounded-lg p-5">
+        <div class="flex items-center justify-between mb-2">
+          <span class="material-symbols-outlined text-amber">speed</span>
+          <span class="text-[10px] text-amber bg-amber/10 border border-amber/30 px-2 py-0.5 rounded font-semibold">MOMENTUM · LIVE</span>
+        </div>
+        <h2 class="font-semibold text-amber">Momentum Rider</h2>
+        <p class="text-sm text-dim mt-1">Rides strong upward moves with lots of buying volume. Best for trending markets.</p>
+        <div class="flex items-center justify-between mt-4 pt-3 border-t border-line/50 text-sm">
+          <span class="text-dim">Win rate <span id="wr-momentum" class="text-txt font-mono font-semibold">71.2%</span></span>
+          <span class="text-dim">Growth <span id="gr-momentum" class="text-up font-mono font-semibold">+52.8%</span></span>
+        </div>
+      </div>
+
+      <div class="bg-panel border border-line rounded-lg p-5 hover:border-amber/50 transition-colors">
+        <div class="flex items-center justify-between mb-2">
+          <span class="material-symbols-outlined text-[#808080]">bar_chart_4_bars</span>
+          <span class="text-[10px] text-[#808080] bg-[#808080]/10 border border-[#808080]/30 px-2 py-0.5 rounded font-semibold">BREAKOUT</span>
+        </div>
+        <h2 class="font-semibold">Breakout Hunter</h2>
+        <p class="text-sm text-dim mt-1">Buys when a stock breaks out of its usual range with big moves. Good for news-driven markets.</p>
+        <div class="flex items-center justify-between mt-4 pt-3 border-t border-line/50 text-sm">
+          <span class="text-dim">Win rate <span id="wr-threshold" class="text-txt font-mono font-semibold">54.8%</span></span>
+          <span class="text-dim">Growth <span id="gr-threshold" class="text-up font-mono font-semibold">+22.4%</span></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Comparison chart -->
+    <section class="bg-panel border border-line rounded-lg p-4">
+      <h2 class="font-semibold mb-3">How each strategy performed</h2>
+      <svg id="compare-chart" viewBox="0 0 800 240" class="w-full h-56" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="momFill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#ff9900" stop-opacity="0.15"/>
+            <stop offset="100%" stop-color="#ff9900" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <path d="M 0,205 L 70,200 L 140,180 L 210,160 L 280,150 L 350,120 L 420,105 L 490,85 L 560,70 L 630,50 L 700,40 L 770,28 L 800,22 L 800,220 L 0,220 Z" fill="url(#momFill)"/>
+        <path d="M 0,210 L 70,208 L 140,200 L 210,196 L 280,190 L 350,188 L 420,180 L 490,178 L 560,172 L 630,168 L 700,162 L 770,160 L 800,158" fill="none" stroke="#808080" stroke-width="1.5"/>
+        <path d="M 0,205 L 70,198 L 140,192 L 210,185 L 280,178 L 350,170 L 420,165 L 490,155 L 560,150 L 630,142 L 700,138 L 770,130 L 800,127" fill="none" stroke="#888888" stroke-width="1.8"/>
+        <path d="M 0,205 L 70,200 L 140,190 L 210,182 L 280,170 L 350,160 L 420,150 L 490,138 L 560,128 L 630,115 L 700,105 L 770,92 L 800,88" fill="none" stroke="#ffb84d" stroke-width="2" stroke-dasharray="5 3"/>
+        <path d="M 0,205 L 70,200 L 140,180 L 210,160 L 280,150 L 350,120 L 420,105 L 490,85 L 560,70 L 630,50 L 700,40 L 770,28 L 800,22" fill="none" stroke="#ff9900" stroke-width="2.5" stroke-linejoin="round"/>
+        <circle cx="800" cy="22" r="4" fill="#ff9900"/>
+      </svg>
+      <div class="flex flex-wrap items-center justify-between mt-2 gap-2">
+        <div class="flex items-center gap-4 text-xs text-dim">
+          <span class="flex items-center gap-1.5"><span class="w-3 h-0.5 bg-[#ff9900] inline-block"></span>Momentum Rider</span>
+          <span class="flex items-center gap-1.5"><span class="w-3 h-0.5 bg-[#ffb84d] inline-block"></span>Trend Follower</span>
+          <span class="flex items-center gap-1.5"><span class="w-3 h-0.5 bg-[#888888] inline-block"></span>Bounce Back</span>
+          <span class="flex items-center gap-1.5"><span class="w-3 h-0.5 bg-[#808080] inline-block"></span>Breakout Hunter</span>
+        </div>
+        <div class="flex items-center gap-4 text-[10px] text-dim font-mono">
+          <span>Q1</span><span>Q2</span><span>Q3</span><span>Q4</span><span class="text-amber">NOW</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Settings table -->
+    <section class="bg-panel border border-line rounded-lg p-4">
+      <h2 class="font-semibold mb-3">Strategy settings</h2>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-xs text-dim border-b border-line">
+              <th class="py-2 font-medium">Strategy</th>
+              <th class="py-2 font-medium">Settings</th>
+              <th class="py-2 font-medium text-right">Trades (1 yr)</th>
+              <th class="py-2 font-medium text-right">Win rate</th>
+              <th class="py-2 font-medium text-right">Profit ratio</th>
+              <th class="py-2 font-medium text-right">Score</th>
+              <th class="py-2 font-medium text-center">Status</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-line/50">
+            <tr class="hover:bg-panel2">
+              <td class="py-2.5 font-medium">Trend Follower</td>
+              <td class="py-2.5 text-dim font-mono text-xs">Fast 12 · Slow 50</td>
+              <td class="py-2.5 text-right font-mono">342</td>
+              <td class="py-2.5 text-right font-mono text-up">68.4%</td>
+              <td class="py-2.5 text-right font-mono">2.14</td>
+              <td class="py-2.5 text-right font-mono">2.38</td>
+              <td class="py-2.5 text-center"><span class="text-[10px] text-amber bg-amber/10 border border-amber/30 px-2 py-0.5 rounded font-semibold">ON</span></td>
+            </tr>
+            <tr class="hover:bg-panel2">
+              <td class="py-2.5 font-medium">Bounce Back</td>
+              <td class="py-2.5 text-dim font-mono text-xs">RSI 14 · 30/70</td>
+              <td class="py-2.5 text-right font-mono">289</td>
+              <td class="py-2.5 text-right font-mono text-up">62.1%</td>
+              <td class="py-2.5 text-right font-mono">1.71</td>
+              <td class="py-2.5 text-right font-mono">1.95</td>
+              <td class="py-2.5 text-center"><span class="text-[10px] text-amber bg-amber/10 border border-amber/30 px-2 py-0.5 rounded font-semibold">ON</span></td>
+            </tr>
+            <tr class="hover:bg-panel2 bg-panel2/50">
+              <td class="py-2.5 font-medium text-amber">Momentum Rider</td>
+              <td class="py-2.5 text-dim font-mono text-xs">Mom 50 · Vol ×1.0</td>
+              <td class="py-2.5 text-right font-mono">411</td>
+              <td class="py-2.5 text-right font-mono text-up">71.2%</td>
+              <td class="py-2.5 text-right font-mono">2.51</td>
+              <td class="py-2.5 text-right font-mono text-amber">2.51</td>
+              <td class="py-2.5 text-center"><span class="text-[10px] bg-amber text-black px-2 py-0.5 rounded font-bold">LIVE</span></td>
+            </tr>
+            <tr class="hover:bg-panel2">
+              <td class="py-2.5 font-medium">Breakout Hunter</td>
+              <td class="py-2.5 text-dim font-mono text-xs">ATR 14 · 2.0σ</td>
+              <td class="py-2.5 text-right font-mono">198</td>
+              <td class="py-2.5 text-right font-mono text-up">54.8%</td>
+              <td class="py-2.5 text-right font-mono">1.38</td>
+              <td class="py-2.5 text-right font-mono">1.42</td>
+              <td class="py-2.5 text-center"><span class="text-[10px] text-dim bg-panel2 border border-line px-2 py-0.5 rounded font-semibold">PAUSED</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+// ===== HFT-Engine strategies live data wiring =====
+const $ = id => document.getElementById(id);
+const COLORS = {sma: "#ff9900", rsi: "#888888", momentum: "#ffb84d", threshold: "#808080"};
+
+function toast(msg, ok) {
+  let t = document.getElementById("toast");
+  if (!t) {
+    t = document.createElement("div");
+    t.id = "toast";
+    t.style.cssText = "position:fixed;bottom:20px;right:20px;z-index:999;padding:10px 16px;border-radius:6px;font:500 13px JetBrains Mono,monospace;transition:opacity .3s";
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.background = ok ? "#0d3b1e" : "#3b0d0d";
+  t.style.border = "1px solid " + (ok ? "#00E676" : "#FF5252");
+  t.style.color = ok ? "#00E676" : "#FF5252";
+  t.style.opacity = 1;
+  clearTimeout(t._tm);
+  t._tm = setTimeout(() => t.style.opacity = 0, 3500);
+}
+
+function drawCompare(curves) {
+  const svg = $("compare-chart");
+  if (!svg) return;
+  const W = 800, H = 240, pad = 8;
+  const keys = Object.keys(curves);
+  const all = keys.flatMap(k => curves[k]);
+  const min = Math.min(...all), max = Math.max(...all);
+  const span = (max - min) || 1;
+  const n = Math.max(...keys.map(k => curves[k].length));
+  const lines = keys.map(k => {
+    const vals = curves[k];
+    const pts = vals.map((v, i) => {
+      const x = pad + (i / (n - 1)) * (W - 2 * pad);
+      const y = H - pad - ((v - min) / span) * (H - 2 * pad);
+      return (i === 0 ? "M" : "L") + x.toFixed(1) + "," + y.toFixed(1);
+    }).join(" ");
+    return `<path d="${pts}" fill="none" stroke="${COLORS[k]}" stroke-width="2.2" stroke-linejoin="round"/>`;
+  }).join("");
+  svg.innerHTML = lines;
+}
+
+async function loadStrategies() {
+  try {
+    const r = await fetch("/api/strategies", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({symbol: "AAPL", start: "2023-01-01", end: "2024-01-01"})});
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || "strategies failed");
+    const idMap = {sma: "sma", rsi: "rsi", momentum: "momentum", threshold: "threshold"};
+    for (const c of d.cards) {
+      const k = idMap[c.id];
+      const wr = $("wr-" + k), gr = $("gr-" + k);
+      if (wr) wr.textContent = c.win_rate + "%";
+      if (gr) gr.textContent = (c.total_return >= 0 ? "+" : "") + c.total_return + "%";
+    }
+    drawCompare(d.curves);
+    toast("Strategies loaded", true);
+  } catch (e) {
+    toast("Error: " + e.message, false);
+  }
+}
+
+loadStrategies();
+</script>
+
+</body>
+</html>

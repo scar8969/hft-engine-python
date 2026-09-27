@@ -99,7 +99,7 @@ def render_footprint(bars, levels, grid, symbol: str, bar_seconds: int, out_path
         sell_vol[li, bi] = s
 
     vmax = max(abs(cell.max()), abs(cell.min()), 1e-9)
-    im = ax.imshow(cell, cmap="RdYlGn", aspect="auto", vmin=-vmax, vmax=vmax)
+    ax.imshow(cell, cmap="RdYlGn", aspect="auto", vmin=-vmax, vmax=vmax)
 
     # cell text: buy/sell volumes
     for li in range(n_levels):

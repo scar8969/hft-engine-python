@@ -34,5 +34,5 @@ class HFTEngine:
             self.market_data.process(bar)
             self.orders.mark_to_market(bar.timestamp, bar.close)
         if bars:
-            self.orders.finalize(bars[-1].close)
+            self.orders.finalize(bars[-1].close, self.symbol)
         return self.orders

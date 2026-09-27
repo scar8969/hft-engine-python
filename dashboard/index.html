@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>HFT-Engine — Test a Strategy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        bg: "#000000", panel: "#0a0a0a", panel2: "#111111",
+        line: "#262626", amber: "#ff9900", amberdim: "#b36b00",
+        up: "#00c853", down: "#ff3d3d", txt: "#d9d9d9", dim: "#808080",
+      },
+      fontFamily: { sans: ["Inter", "sans-serif"], mono: ["JetBrains Mono", "monospace"] },
+    },
+  },
+};
+</script>
+<style>
+  .material-symbols-outlined { font-size: 18px; line-height: 1; display: inline-block; vertical-align: middle; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: #050505; }
+  ::-webkit-scrollbar-thumb { background: #262626; border-radius: 3px; }
+</style>
+</head>
+<body class="bg-bg text-txt font-sans antialiased">
+
+<!-- ===== Sidebar ===== -->
+<aside class="fixed top-0 left-0 z-40 h-screen w-14 lg:w-56 flex flex-col bg-[#050505] border-r border-line">
+  <div class="h-14 flex items-center gap-2.5 px-3 border-b border-line shrink-0">
+    <div class="w-8 h-8 rounded bg-panel2 border border-line flex items-center justify-center text-amber text-base">⚡</div>
+    <div class="hidden lg:block">
+      <div class="text-sm font-semibold leading-tight">HFT-Engine</div>
+      <div class="text-[10px] text-dim">Trading simulator</div>
+    </div>
+  </div>
+  <nav class="flex-1 py-3 px-2 flex flex-col gap-1">
+    <a href="index.html" class="flex items-center gap-2.5 px-2.5 py-2 rounded text-sm bg-amber/10 text-amber border-l-2 border-amber font-medium">
+      <span class="material-symbols-outlined">candlestick_chart</span>
+      <span class="hidden lg:inline">Test a Strategy</span>
+    </a>
+    <a href="orderflow.html" class="flex items-center gap-2.5 px-2.5 py-2 rounded text-sm text-dim hover:text-txt hover:bg-panel2 transition-colors">
+      <span class="material-symbols-outlined">query_stats</span>
+      <span class="hidden lg:inline">Live Market</span>
+    </a>
+    <a href="portfolio.html" class="flex items-center gap-2.5 px-2.5 py-2 rounded text-sm text-dim hover:text-txt hover:bg-panel2 transition-colors">
+      <span class="material-symbols-outlined">pie_chart</span>
+      <span class="hidden lg:inline">My Portfolio</span>
+    </a>
+    <a href="strategies.html" class="flex items-center gap-2.5 px-2.5 py-2 rounded text-sm text-dim hover:text-txt hover:bg-panel2 transition-colors">
+      <span class="material-symbols-outlined">psychology</span>
+      <span class="hidden lg:inline">Strategies</span>
+    </a>
+  </nav>
+  <div class="p-3 border-t border-line hidden lg:block">
+    <div class="text-[10px] text-dim">Demo mode — no real money</div>
+  </div>
+</aside>
+
+<!-- ===== Main ===== -->
+<div class="ml-14 lg:ml-56 min-h-screen">
+  <header class="px-6 pt-6 pb-4 border-b border-line">
+    <h1 class="text-2xl font-semibold">Test a Strategy</h1>
+    <p class="text-sm text-dim mt-1">See how a trading rule would have performed on past data — before risking real money.</p>
+  </header>
+
+  <main class="p-6 space-y-6 max-w-6xl">
+
+    <!-- Controls -->
+    <section class="bg-panel border border-line rounded-lg p-4">
+      <div class="flex flex-wrap items-end gap-4">
+        <div>
+          <label class="block text-xs text-dim mb-1.5">Stock</label>
+          <input id="sym-input" value="AAPL" class="bg-panel2 border border-line rounded px-3 py-2 text-sm font-mono w-28 focus:border-amber focus:outline-none"/>
+        </div>
+        <div>
+          <label class="block text-xs text-dim mb-1.5">From</label>
+          <input id="start-input" value="2023-01-01" class="bg-panel2 border border-line rounded px-3 py-2 text-sm font-mono w-32 focus:border-amber focus:outline-none"/>
+        </div>
+        <div>
+          <label class="block text-xs text-dim mb-1.5">To</label>
+          <input id="end-input" value="2024-01-01" class="bg-panel2 border border-line rounded px-3 py-2 text-sm font-mono w-32 focus:border-amber focus:outline-none"/>
+        </div>
+        <div>
+          <label class="block text-xs text-dim mb-1.5">Strategy</label>
+          <select id="strategy-select" class="bg-panel2 border border-line rounded px-3 py-2 text-sm w-48 focus:border-amber focus:outline-none">
+            <option value="sma">Trend Follower</option>
+            <option value="rsi">Bounce Back</option>
+            <option value="momentum">Momentum Rider</option>
+            <option value="threshold">Breakout Hunter</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs text-dim mb-1.5">Starting money</label>
+          <input id="capital-input" value="$100,000" class="bg-panel2 border border-line rounded px-3 py-2 text-sm font-mono w-32 focus:border-amber focus:outline-none"/>
+        </div>
+        <button id="run-btn" class="bg-amber text-black font-semibold text-sm px-6 py-2.5 rounded hover:bg-amberdim transition-colors">Run Test</button>
+      </div>
+    </section>
+
+    <!-- Results -->
+    <section class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="bg-panel border border-line rounded-lg p-4">
+        <div class="text-xs text-dim">MONEY MADE</div>
+        <div class="text-3xl font-mono font-semibold text-up mt-1" id="kpi-return">+$48,620</div>
+        <div class="text-xs text-dim mt-1">+48.62% on $100k</div>
+      </div>
+      <div class="bg-panel border border-line rounded-lg p-4">
+        <div class="text-xs text-dim">WIN RATE</div>
+        <div class="text-3xl font-mono font-semibold mt-1" id="kpi-winrate">68.4%</div>
+        <div class="text-xs text-dim mt-1">234 wins · 108 losses</div>
+      </div>
+      <div class="bg-panel border border-line rounded-lg p-4">
+        <div class="text-xs text-dim">TRADES</div>
+        <div class="text-3xl font-mono font-semibold mt-1" id="kpi-trades">342</div>
+        <div class="text-xs text-dim mt-1">over the test period</div>
+      </div>
+      <div class="bg-panel border border-line rounded-lg p-4">
+        <div class="text-xs text-dim">WORST DIP</div>
+        <div class="text-3xl font-mono font-semibold text-down mt-1" id="kpi-dd">-8.45%</div>
+        <div class="text-xs text-dim mt-1">recovered in 14 days</div>
+      </div>
+    </section>
+
+    <!-- Chart -->
+    <section class="bg-panel border border-line rounded-lg p-4">
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+        <h2 class="font-semibold">Your money over time</h2>
+        <div class="flex items-center gap-4 text-xs text-dim">
+          <span class="flex items-center gap-1.5"><span class="w-3 h-0.5 bg-amber inline-block"></span>Your strategy</span>
+          <span class="flex items-center gap-1.5"><span class="w-3 h-0.5 border-t border-dashed border-dim inline-block"></span>Just holding (S&amp;P 500)</span>
+        </div>
+      </div>
+      <svg id="equity-chart" viewBox="0 0 800 240" class="w-full h-56" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="eqFill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#ff9900" stop-opacity="0.25"/>
+            <stop offset="100%" stop-color="#ff9900" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <path d="M 0,205 L 60,200 L 120,192 L 180,195 L 240,170 L 300,176 L 360,150 L 420,158 L 480,125 L 540,132 L 600,100 L 660,106 L 720,72 L 780,60 L 800,55 L 800,210 L 0,210 Z" fill="url(#eqFill)"/>
+        <path d="M 0,205 Q 200,192 400,172 T 800,140" fill="none" stroke="#808080" stroke-dasharray="5 4" stroke-width="1.5"/>
+        <path d="M 0,205 L 60,200 L 120,192 L 180,195 L 240,170 L 300,176 L 360,150 L 420,158 L 480,125 L 540,132 L 600,100 L 660,106 L 720,72 L 780,60 L 800,55" fill="none" stroke="#ff9900" stroke-width="2.5" stroke-linejoin="round"/>
+        <circle cx="800" cy="55" r="4" fill="#ff9900"/>
+      </svg>
+      <div class="flex justify-between text-[10px] text-dim font-mono mt-1">
+        <span>Jan 2023</span><span>Apr</span><span>Jul</span><span>Oct</span><span>Jan 2024</span>
+      </div>
+    </section>
+
+    <!-- Trades -->
+    <section class="bg-panel border border-line rounded-lg p-4">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="font-semibold">Recent trades</h2>
+        <span class="text-xs text-dim">Showing 6 of 342</span>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-xs text-dim border-b border-line">
+              <th class="py-2 font-medium">Date</th>
+              <th class="py-2 font-medium">Stock</th>
+              <th class="py-2 font-medium text-right">Bought at</th>
+              <th class="py-2 font-medium text-right">Sold at</th>
+              <th class="py-2 font-medium text-right">Shares</th>
+              <th class="py-2 font-medium text-right">Profit</th>
+            </tr>
+          </thead>
+          <tbody id="trades-body" class="divide-y divide-line/50">
+            <tr class="hover:bg-panel2">
+              <td class="py-2.5 text-dim font-mono text-xs">Nov 28, 2023</td>
+              <td class="py-2.5 font-medium">AAPL</td>
+              <td class="py-2.5 text-right font-mono">$189.40</td>
+              <td class="py-2.5 text-right font-mono">$194.25</td>
+              <td class="py-2.5 text-right font-mono">500</td>
+              <td class="py-2.5 text-right font-mono text-up">+$2,425</td>
+            </tr>
+            <tr class="hover:bg-panel2">
+              <td class="py-2.5 text-dim font-mono text-xs">Nov 14, 2023</td>
+              <td class="py-2.5 font-medium">AAPL</td>
+              <td class="py-2.5 text-right font-mono">$188.90</td>
+              <td class="py-2.5 text-right font-mono">$187.20</td>
+              <td class="py-2.5 text-right font-mono">450</td>
+              <td class="py-2.5 text-right font-mono text-down">-$765</td>
+            </tr>
+            <tr class="hover:bg-panel2">
+              <td class="py-2.5 text-dim font-mono text-xs">Oct 24, 2023</td>
+              <td class="py-2.5 font-medium">AAPL</td>
+              <td class="py-2.5 text-right font-mono">$173.10</td>
+              <td class="py-2.5 text-right font-mono">$176.65</td>
+              <td class="py-2.5 text-right font-mono">600</td>
+              <td class="py-2.5 text-right font-mono text-up">+$2,130</td>
+            </tr>
+            <tr class="hover:bg-panel2">
+              <td class="py-2.5 text-dim font-mono text-xs">Sep 29, 2023</td>
+              <td class="py-2.5 font-medium">AAPL</td>
+              <td class="py-2.5 text-right font-mono">$171.22</td>
+              <td class="py-2.5 text-right font-mono">$180.71</td>
+              <td class="py-2.5 text-right font-mono">550</td>
+              <td class="py-2.5 text-right font-mono text-up">+$5,220</td>
+            </tr>
+            <tr class="hover:bg-panel2">
+              <td class="py-2.5 text-dim font-mono text-xs">Aug 8, 2023</td>
+              <td class="py-2.5 font-medium">AAPL</td>
+              <td class="py-2.5 text-right font-mono">$174.49</td>
+              <td class="py-2.5 text-right font-mono">$179.80</td>
+              <td class="py-2.5 text-right font-mono">400</td>
+              <td class="py-2.5 text-right font-mono text-up">+$2,124</td>
+            </tr>
+            <tr class="hover:bg-panel2">
+              <td class="py-2.5 text-dim font-mono text-xs">Jul 21, 2023</td>
+              <td class="py-2.5 font-medium">AAPL</td>
+              <td class="py-2.5 text-right font-mono">$193.50</td>
+              <td class="py-2.5 text-right font-mono">$191.10</td>
+              <td class="py-2.5 text-right font-mono">500</td>
+              <td class="py-2.5 text-right font-mono text-down">-$1,200</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+// ===== HFT-Engine live data wiring =====
+const $ = id => document.getElementById(id);
+const fmtMoney = v => "$" + Number(v).toLocaleString("en-US", {minimumFractionDigits: 2, maximumFractionDigits: 2});
+const fmtPct = v => (v >= 0 ? "+" : "") + Number(v).toFixed(2) + "%";
+
+function toast(msg, ok) {
+  let t = document.getElementById("toast");
+  if (!t) {
+    t = document.createElement("div");
+    t.id = "toast";
+    t.style.cssText = "position:fixed;bottom:20px;right:20px;z-index:999;padding:10px 16px;border-radius:6px;font:500 13px JetBrains Mono,monospace;transition:opacity .3s";
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.background = ok ? "#0d3b1e" : "#3b0d0d";
+  t.style.border = "1px solid " + (ok ? "#00E676" : "#FF5252");
+  t.style.color = ok ? "#00E676" : "#FF5252";
+  t.style.opacity = 1;
+  clearTimeout(t._tm);
+  t._tm = setTimeout(() => t.style.opacity = 0, 3500);
+}
+
+function buildPath(values, w, h, pad = 4) {
+  if (!values.length) return "";
+  const min = Math.min(...values), max = Math.max(...values);
+  const span = (max - min) || 1;
+  return values.map((v, i) => {
+    const x = pad + (i / (values.length - 1)) * (w - 2 * pad);
+    const y = h - pad - ((v - min) / span) * (h - 2 * pad);
+    return (i === 0 ? "M" : "L") + x.toFixed(1) + "," + y.toFixed(1);
+  }).join(" ");
+}
+
+function drawEquity(curve) {
+  const svg = $("equity-chart");
+  if (!svg || !curve.length) return;
+  const W = 800, H = 240, pad = 4;
+  const eq = curve.map(p => p.equity);
+  const path = buildPath(eq, W, H, pad);
+  const area = path + ` L ${W - pad},${H - pad} L ${pad},${H - pad} Z`;
+  svg.innerHTML = `
+    <defs><linearGradient id="eqFill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#00E676" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#00E676" stop-opacity="0.02"/>
+    </linearGradient></defs>
+    <path d="${area}" fill="url(#eqFill)"/>
+    <path d="${path}" fill="none" stroke="#00E676" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+  `;
+}
+
+function drawTrades(trades) {
+  const tb = $("trades-body");
+  if (!tb) return;
+  if (!trades.length) {
+    tb.innerHTML = `<tr><td colspan="7" class="py-6 text-center text-dim">No trades — run a backtest</td></tr>`;
+    return;
+  }
+  tb.innerHTML = trades.slice(0, 8).map(t => {
+    const win = t.pnl >= 0;
+    const cls = win ? "text-up" : "text-down";
+    return `<tr class="hover:bg-panel2">
+      <td class="py-2.5 text-dim font-mono text-xs">${t.entry_time}</td>
+      <td class="py-2.5 font-medium">${t.symbol || ""}</td>
+      <td class="py-2.5 text-right font-mono">${fmtMoney(t.entry_price)}</td>
+      <td class="py-2.5 text-right font-mono">${t.exit_time ? t.exit_time.slice(0,10) : "—"}</td>
+      <td class="py-2.5 text-right font-mono">${fmtMoney(t.exit_price)}</td>
+      <td class="py-2.5 text-right font-mono">${t.volume}</td>
+      <td class="py-2.5 text-right font-mono ${cls}">${t.pnl >= 0 ? "+" : ""}${fmtMoney(t.pnl)}</td>
+    </tr>`;
+  }).join("");
+}
+
+async function runBacktest() {
+  const btn = $("run-btn");
+  btn.disabled = true; btn.textContent = "Running…";
+  const capital = parseFloat(($("capital-input").value || "100000").replace(/[^0-9.]/g, ""));
+  const body = {
+    symbol: $("sym-input").value.trim().toUpperCase() || "AAPL",
+    start: $("start-input").value.trim() || "2023-01-01",
+    end: $("end-input").value.trim() || "2024-01-01",
+    strategy: $("strategy-select").value,
+    fast: 20, slow: 50,
+    capital: capital || 100000,
+    commission: 1, slippage: 5,
+  };
+  try {
+    const r = await fetch("/api/backtest", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || "backtest failed");
+    const m = d.metrics;
+    $("kpi-return").textContent = (m.total_return_pct >= 0 ? "+" : "") + fmtMoney(m.final_equity - capital);
+    $("kpi-return").className = "text-3xl font-mono font-semibold mt-1 " + (m.total_return_pct >= 0 ? "text-up" : "text-down");
+    $("kpi-winrate").textContent = m.win_rate_pct.toFixed(1) + "%";
+    $("kpi-trades").textContent = m.trade_count;
+    $("kpi-dd").textContent = m.max_drawdown_pct.toFixed(2) + "%";
+    drawEquity(d.equity_curve);
+    drawTrades(d.trades);
+    toast(`Backtest done: ${fmtPct(m.total_return_pct)} return, ${m.trade_count} trades`, true);
+  } catch (e) {
+    toast("Error: " + e.message, false);
+  } finally {
+    btn.disabled = false; btn.textContent = "Run Test";
+  }
+}
+
+$("run-btn").addEventListener("click", runBacktest);
+runBacktest();
+</script>
+
+</body>
+</html>

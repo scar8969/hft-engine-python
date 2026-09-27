@@ -8,7 +8,6 @@ import os
 import sys
 
 from engine import HFTEngine
-from engine.models import MarketData
 
 try:
     from alpaca.trading.client import TradingClient

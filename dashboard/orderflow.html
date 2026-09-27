@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>HFT-Engine — Live Market</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        bg: "#000000", panel: "#0a0a0a", panel2: "#111111",
+        line: "#262626", amber: "#ff9900", amberdim: "#b36b00",
+        up: "#00c853", down: "#ff3d3d", txt: "#d9d9d9", dim: "#808080",
+      },
+      fontFamily: { sans: ["Inter", "sans-serif"], mono: ["JetBrains Mono", "monospace"] },
+    },
+  },
+};
+</script>
+<style>
+  .material-symbols-outlined { font-size: 18px; line-height: 1; display: inline-block; vertical-align: middle; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: #050505; }
+  ::-webkit-scrollbar-thumb { background: #262626; border-radius: 3px; }
+</style>
+</head>
+<body class="bg-bg text-txt font-sans antialiased">
+
+<!-- ===== Sidebar ===== -->
+<aside class="fixed top-0 left-0 z-40 h-screen w-14 lg:w-56 flex flex-col bg-[#050505] border-r border-line">
+  <div class="h-14 flex items-center gap-2.5 px-3 border-b border-line shrink-0">
+    <div class="w-8 h-8 rounded bg-panel2 border border-line flex items-center justify-center text-amber text-base">⚡</div>
+    <div class="hidden lg:block">
+      <div class="text-sm font-semibold leading-tight">HFT-Engine</div>
+      <div class="text-[10px] text-dim">Trading simulator</div>
+    </div>
+  </div>
+  <nav class="flex-1 py-3 px-2 flex flex-col gap-1">
+    <a href="index.html" class="flex items-center gap-2.5 px-2.5 py-2 rounded text-sm text-dim hover:text-txt hover:bg-panel2 transition-colors">
+      <span class="material-symbols-outlined">candlestick_chart</span>
+      <span class="hidden lg:inline">Test a Strategy</span>
+    </a>
+    <a href="orderflow.html" class="flex items-center gap-2.5 px-2.5 py-2 rounded text-sm bg-amber/10 text-amber border-l-2 border-amber font-medium">
+      <span class="material-symbols-outlined">query_stats</span>
+      <span class="hidden lg:inline">Live Market</span>
+    </a>
+    <a href="portfolio.html" class="flex items-center gap-2.5 px-2.5 py-2 rounded text-sm text-dim hover:text-txt hover:bg-panel2 transition-colors">
+      <span class="material-symbols-outlined">pie_chart</span>
+      <span class="hidden lg:inline">My Portfolio</span>
+    </a>
+    <a href="strategies.html" class="flex items-center gap-2.5 px-2.5 py-2 rounded text-sm text-dim hover:text-txt hover:bg-panel2 transition-colors">
+      <span class="material-symbols-outlined">psychology</span>
+      <span class="hidden lg:inline">Strategies</span>
+    </a>
+  </nav>
+  <div class="p-3 border-t border-line hidden lg:block">
+    <div class="text-[10px] text-dim">Demo mode — no real money</div>
+  </div>
+</aside>
+
+<!-- ===== Main ===== -->
+<div class="ml-14 lg:ml-56 min-h-screen">
+  <header class="px-6 pt-6 pb-4 border-b border-line">
+    <h1 class="text-2xl font-semibold">Live Market</h1>
+    <p class="text-sm text-dim mt-1">Watch buyers and sellers in real time. Green = buying, red = selling.</p>
+  </header>
+
+  <main class="p-6 space-y-6 max-w-6xl">
+
+    <!-- Price + pressure -->
+    <section class="bg-panel border border-line rounded-lg p-6">
+      <div class="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <div class="text-xs text-dim">SPY · S&amp;P 500 ETF</div>
+          <div class="text-5xl font-mono font-semibold mt-1">$512.33</div>
+          <div class="text-up font-mono mt-1">▲ +0.84% today</div>
+        </div>
+        <div class="w-16 h-16 rounded-full bg-up/10 border border-up/30 flex items-center justify-center">
+          <span class="text-up text-2xl">▲</span>
+        </div>
+      </div>
+      <div class="mt-6">
+        <div class="flex justify-between text-xs mb-1.5">
+          <span class="text-up font-semibold">BUYING 78%</span>
+          <span class="text-down font-semibold">SELLING 22%</span>
+        </div>
+        <div class="h-2.5 bg-panel2 rounded-full overflow-hidden flex">
+          <div class="bg-up" style="width:78%"></div>
+          <div class="bg-down" style="width:22%"></div>
+        </div>
+        <div class="text-xs text-dim mt-2">Right now, buyers are winning.</div>
+      </div>
+    </section>
+
+    <!-- Two columns -->
+    <section class="grid lg:grid-cols-2 gap-6">
+
+      <!-- Recent trades -->
+      <div class="bg-panel border border-line rounded-lg p-4">
+        <h2 class="font-semibold mb-3">Recent trades</h2>
+        <div id="trades-feed" class="divide-y divide-line/50">
+          <div class="flex items-center justify-between py-2 text-sm">
+            <span class="text-dim font-mono text-xs">09:35:12.894</span>
+            <span class="font-mono">$512.34</span>
+            <span class="font-mono text-dim">850</span>
+            <span class="text-up text-xs font-semibold">BUY</span>
+          </div>
+          <div class="flex items-center justify-between py-2 text-sm">
+            <span class="text-dim font-mono text-xs">09:35:12.780</span>
+            <span class="font-mono">$512.34</span>
+            <span class="font-mono text-dim">120</span>
+            <span class="text-up text-xs font-semibold">BUY</span>
+          </div>
+          <div class="flex items-center justify-between py-2 text-sm">
+            <span class="text-dim font-mono text-xs">09:35:12.645</span>
+            <span class="font-mono">$512.32</span>
+            <span class="font-mono text-dim">45</span>
+            <span class="text-down text-xs font-semibold">SELL</span>
+          </div>
+          <div class="flex items-center justify-between py-2 text-sm">
+            <span class="text-dim font-mono text-xs">09:35:12.412</span>
+            <span class="font-mono">$512.34</span>
+            <span class="font-mono text-dim">1,200</span>
+            <span class="text-up text-xs font-semibold">BUY</span>
+          </div>
+          <div class="flex items-center justify-between py-2 text-sm">
+            <span class="text-dim font-mono text-xs">09:35:12.310</span>
+            <span class="font-mono">$512.32</span>
+            <span class="font-mono text-dim">15</span>
+            <span class="text-down text-xs font-semibold">SELL</span>
+          </div>
+          <div class="flex items-center justify-between py-2 text-sm">
+            <span class="text-dim font-mono text-xs">09:35:12.202</span>
+            <span class="font-mono">$512.34</span>
+            <span class="font-mono text-dim">250</span>
+            <span class="text-up text-xs font-semibold">BUY</span>
+          </div>
+          <div class="flex items-center justify-between py-2 text-sm">
+            <span class="text-dim font-mono text-xs">09:35:11.980</span>
+            <span class="font-mono">$512.32</span>
+            <span class="font-mono text-dim">80</span>
+            <span class="text-down text-xs font-semibold">SELL</span>
+          </div>
+          <div class="flex items-center justify-between py-2 text-sm">
+            <span class="text-dim font-mono text-xs">09:35:11.854</span>
+            <span class="font-mono">$512.34</span>
+            <span class="font-mono text-dim">310</span>
+            <span class="text-up text-xs font-semibold">BUY</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Where the price is -->
+      <div class="bg-panel border border-line rounded-lg p-4">
+        <h2 class="font-semibold mb-3">Where the trading is happening</h2>
+        <div class="text-xs text-dim mb-3">Most trades happened at <span class="text-amber font-semibold">$512.30</span> today.</div>
+        <div id="vol-profile" class="space-y-1.5">
+          <div class="flex items-center justify-end gap-2 text-xs font-mono">
+            <span class="text-dim w-14">512.80</span>
+            <div class="flex-1 bg-panel2 rounded-sm h-4 overflow-hidden"><div class="h-full bg-dim/30" style="width:28%"></div></div>
+            <span class="text-dim w-12 text-right">3.2K</span>
+          </div>
+          <div class="flex items-center justify-end gap-2 text-xs font-mono">
+            <span class="text-dim w-14">512.70</span>
+            <div class="flex-1 bg-panel2 rounded-sm h-4 overflow-hidden"><div class="h-full bg-dim/40" style="width:42%"></div></div>
+            <span class="text-dim w-12 text-right">5.8K</span>
+          </div>
+          <div class="flex items-center justify-end gap-2 text-xs font-mono">
+            <span class="text-dim w-14">512.60</span>
+            <div class="flex-1 bg-panel2 rounded-sm h-4 overflow-hidden"><div class="h-full bg-dim/50" style="width:65%"></div></div>
+            <span class="text-dim w-12 text-right">12.4K</span>
+          </div>
+          <div class="flex items-center justify-end gap-2 text-xs font-mono">
+            <span class="text-dim w-14">512.50</span>
+            <div class="flex-1 bg-panel2 rounded-sm h-4 overflow-hidden"><div class="h-full bg-dim/60" style="width:78%"></div></div>
+            <span class="text-dim w-12 text-right">18.9K</span>
+          </div>
+          <div class="flex items-center justify-end gap-2 text-xs font-mono">
+            <span class="text-dim w-14">512.40</span>
+            <div class="flex-1 bg-panel2 rounded-sm h-4 overflow-hidden"><div class="h-full bg-dim/70" style="width:86%"></div></div>
+            <span class="text-dim w-12 text-right">24.1K</span>
+          </div>
+          <div class="flex items-center justify-end gap-2 text-xs font-mono">
+            <span class="text-amber font-bold w-14">512.30 ★</span>
+            <div class="flex-1 bg-panel2 rounded-sm h-4 overflow-hidden"><div class="h-full bg-amber/60" style="width:96%"></div></div>
+            <span class="text-amber font-bold w-12 text-right">34.8K</span>
+          </div>
+          <div class="flex items-center justify-end gap-2 text-xs font-mono">
+            <span class="text-dim w-14">512.20</span>
+            <div class="flex-1 bg-panel2 rounded-sm h-4 overflow-hidden"><div class="h-full bg-dim/60" style="width:70%"></div></div>
+            <span class="text-dim w-12 text-right">16.2K</span>
+          </div>
+          <div class="flex items-center justify-end gap-2 text-xs font-mono">
+            <span class="text-dim w-14">512.10</span>
+            <div class="flex-1 bg-panel2 rounded-sm h-4 overflow-hidden"><div class="h-full bg-dim/40" style="width:50%"></div></div>
+            <span class="text-dim w-12 text-right">9.8K</span>
+          </div>
+          <div class="flex items-center justify-end gap-2 text-xs font-mono">
+            <span class="text-dim w-14">512.00</span>
+            <div class="flex-1 bg-panel2 rounded-sm h-4 overflow-hidden"><div class="h-full bg-dim/30" style="width:25%"></div></div>
+            <span class="text-dim w-12 text-right">3.1K</span>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+</div>
+
+<script>
+// ===== HFT-Engine order flow live data wiring =====
+const $ = id => document.getElementById(id);
+
+function toast(msg, ok) {
+  let t = document.getElementById("toast");
+  if (!t) {
+    t = document.createElement("div");
+    t.id = "toast";
+    t.style.cssText = "position:fixed;bottom:20px;right:20px;z-index:999;padding:10px 16px;border-radius:6px;font:500 13px JetBrains Mono,monospace;transition:opacity .3s";
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.background = ok ? "#0d3b1e" : "#3b0d0d";
+  t.style.border = "1px solid " + (ok ? "#00E676" : "#FF5252");
+  t.style.color = ok ? "#00E676" : "#FF5252";
+  t.style.opacity = 1;
+  clearTimeout(t._tm);
+  t._tm = setTimeout(() => t.style.opacity = 0, 3500);
+}
+
+function drawTradesFeed(d) {
+  const feed = $("trades-feed");
+  if (!feed) return;
+  // synthesize trade rows from footprint deltas
+  const n = Math.min(8, d.bars.length);
+  let html = "";
+  for (let i = n - 1; i >= 0; i--) {
+    const b = d.bars[i];
+    const buy = d.buy[0] ? d.buy[Math.floor(d.levels.length / 2)][i] : 0;
+    const sell = d.sell[0] ? d.sell[Math.floor(d.levels.length / 2)][i] : 0;
+    const side = buy >= sell ? "BUY" : "SELL";
+    const cls = side === "BUY" ? "text-up" : "text-down";
+    const price = d.levels[Math.floor(d.levels.length / 2)];
+    const vol = Math.max(buy, sell);
+    html += `<div class="flex items-center justify-between py-2 text-sm">
+      <span class="text-dim font-mono text-xs">${b}</span>
+      <span class="font-mono">$${price}</span>
+      <span class="font-mono text-dim">${vol}</span>
+      <span class="${cls} text-xs font-semibold">${side}</span>
+    </div>`;
+  }
+  feed.innerHTML = html;
+}
+
+function drawVolProfile(d) {
+  const vp = $("vol-profile");
+  if (!vp) return;
+  const maxV = Math.max(...d.vol_profile, 1);
+  const poc = d.vol_profile.indexOf(Math.max(...d.vol_profile));
+  vp.innerHTML = d.levels.map((lvl, i) => {
+    const w = Math.round(d.vol_profile[i] / maxV * 100);
+    const isPoc = i === poc;
+    const label = isPoc ? `<span class="text-amber font-bold w-14">${lvl} ★</span>` : `<span class="text-dim w-14">${lvl}</span>`;
+    const barCls = isPoc ? "bg-amber/60" : "bg-dim/" + Math.max(30, Math.round(w / 3));
+    const valCls = isPoc ? "text-amber font-bold" : "text-dim";
+    return `<div class="flex items-center justify-end gap-2 text-xs font-mono">
+      ${label}
+      <div class="flex-1 bg-panel2 rounded-sm h-4 overflow-hidden"><div class="h-full ${barCls}" style="width:${w}%"></div></div>
+      <span class="${valCls} w-12 text-right">${Math.round(d.vol_profile[i])}</span>
+    </div>`;
+  }).join("");
+}
+
+async function loadOrderflow() {
+  try {
+    const r = await fetch("/api/orderflow", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({symbol: "AAPL", bar_seconds: 60})});
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || "orderflow failed");
+    drawTradesFeed(d);
+    drawVolProfile(d);
+    toast("Order flow connected", true);
+  } catch (e) {
+    toast("Error: " + e.message, false);
+  }
+}
+
+loadOrderflow();
+</script>
+
+</body>
+</html>

@@ -1,5 +1,5 @@
 """Shared models: MarketData, Order, Trade, enums."""
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from datetime import datetime
 

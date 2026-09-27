@@ -1,0 +1,25 @@
+Design a dark-themed professional trading dashboard web app called "HFT-Engine" for an algorithmic backtesting platform. Overall style: Bloomberg-terminal-meets-modern-fintech — near-black background (#0D1117), subtle dark-gray panels (#161B22), thin borders, monospace numbers, accent colors electric green (#00E676) for profit/buy and red (#FF5252) for loss/sell, blue (#448AFF) for neutral highlights. Inter font for UI text, JetBrains Mono for all numeric data. Desktop-first layout with a persistent left sidebar navigation.
+
+Screen 1 — Backtest (main screen):
+- Left sidebar: app logo "⚡ HFT-Engine", nav items: Backtest, Live Order Flow, Portfolio, Strategies, Settings.
+- Top control bar: symbol text input (default AAPL), start date and end date pickers, strategy dropdown (SMA Cross / RSI Mean-Reversion / Momentum / Threshold), parameter sliders (Fast MA 5–60, Slow MA 20–200), capital input, commission and slippage inputs, and a large green "Run Backtest" button with a loading spinner state.
+- Row of 6 KPI metric cards: Total Return %, Max Drawdown %, Sharpe Ratio, Trade Count, Win Rate %, Final Equity — each with big monospace numbers, small label, and colored delta arrows (green/red).
+- Large equity curve line chart (area gradient fill under the line) taking full width, with drawdown shown as a red shaded sub-chart beneath it.
+- Below: a trades table with columns Entry Time, Entry Price, Exit Time, Exit Price, Volume, PnL (green/red colored rows), PnL %; with pagination and sort indicators.
+
+Screen 2 — Live Order Flow:
+- Footprint chart panel: grid of price levels (rows) vs time bars (columns), each cell split showing buy volume in green and sell volume in red with heat intensity, price axis on the right.
+- Cumulative delta line chart below the footprint with positive area green, negative area red.
+- Vertical volume profile histogram on the right edge of the footprint.
+- Live ticker strip at top: BTCUSDT, ETHUSDT, SPY with last price and % change, pulsing green dot indicating WebSocket connected.
+- Controls: symbol input, bar size selector (30s/1m/5m), connect/disconnect toggle button.
+
+Screen 3 — Portfolio:
+- Multi-symbol selector chips (add/remove symbols like AAPL, SPY, QQQ).
+- Three optimization strategy cards side by side: Max Sharpe, Min Volatility, Risk Parity — each selectable with a highlighted border state, showing resulting allocation weights as horizontal stacked bars.
+- Donut chart of portfolio allocation, combined portfolio equity curve, and a small stats table (expected return, volatility, Sharpe per strategy).
+
+Screen 4 — Strategies:
+- Four strategy cards in a grid, each with an icon, name, description, win-rate badge, and a sparkline of historical performance; comparison overlay chart below showing all four equity curves in different colors with a legend.
+
+Include: hover tooltips on all charts, empty states ("Run a backtest to see results"), skeleton loaders, success/error toast notifications, responsive behavior down to tablet width.

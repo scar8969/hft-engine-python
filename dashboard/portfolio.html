@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>HFT-Engine — My Portfolio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        bg: "#000000", panel: "#0a0a0a", panel2: "#111111",
+        line: "#262626", amber: "#ff9900", amberdim: "#b36b00",
+        up: "#00c853", down: "#ff3d3d", txt: "#d9d9d9", dim: "#808080",
+      },
+      fontFamily: { sans: ["Inter", "sans-serif"], mono: ["JetBrains Mono", "monospace"] },
+    },
+  },
+};
+</script>
+<style>
+  .material-symbols-outlined { font-size: 18px; line-height: 1; display: inline-block; vertical-align: middle; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: #050505; }
+  ::-webkit-scrollbar-thumb { background: #262626; border-radius: 3px; }
+</style>
+</head>
+<body class="bg-bg text-txt font-sans antialiased">
+
+<!-- ===== Sidebar ===== -->
+<aside class="fixed top-0 left-0 z-40 h-screen w-14 lg:w-56 flex flex-col bg-[#050505] border-r border-line">
+  <div class="h-14 flex items-center gap-2.5 px-3 border-b border-line shrink-0">
+    <div class="w-8 h-8 rounded bg-panel2 border border-line flex items-center justify-center text-amber text-base">⚡</div>
+    <div class="hidden lg:block">
+      <div class="text-sm font-semibold leading-tight">HFT-Engine</div>
+      <div class="text-[10px] text-dim">Trading simulator</div>
+    </div>
+  </div>
+  <nav class="flex-1 py-3 px-2 flex flex-col gap-1">
+    <a href="index.html" class="flex items-center gap-2.5 px-2.5 py-2 rounded text-sm text-dim hover:text-txt hover:bg-panel2 transition-colors">
+      <span class="material-symbols-outlined">candlestick_chart</span>
+      <span class="hidden lg:inline">Test a Strategy</span>
+    </a>
+    <a href="orderflow.html" class="flex items-center gap-2.5 px-2.5 py-2 rounded text-sm text-dim hover:text-txt hover:bg-panel2 transition-colors">
+      <span class="material-symbols-outlined">query_stats</span>
+      <span class="hidden lg:inline">Live Market</span>
+    </a>
+    <a href="portfolio.html" class="flex items-center gap-2.5 px-2.5 py-2 rounded text-sm bg-amber/10 text-amber border-l-2 border-amber font-medium">
+      <span class="material-symbols-outlined">pie_chart</span>
+      <span class="hidden lg:inline">My Portfolio</span>
+    </a>
+    <a href="strategies.html" class="flex items-center gap-2.5 px-2.5 py-2 rounded text-sm text-dim hover:text-txt hover:bg-panel2 transition-colors">
+      <span class="material-symbols-outlined">psychology</span>
+      <span class="hidden lg:inline">Strategies</span>
+    </a>
+  </nav>
+  <div class="p-3 border-t border-line hidden lg:block">
+    <div class="text-[10px] text-dim">Demo mode — no real money</div>
+  </div>
+</aside>
+
+<!-- ===== Main ===== -->
+<div class="ml-14 lg:ml-56 min-h-screen">
+  <header class="px-6 pt-6 pb-4 border-b border-line">
+    <h1 class="text-2xl font-semibold">My Portfolio</h1>
+    <p class="text-sm text-dim mt-1">How your money is split across stocks, and how that mix has performed.</p>
+  </header>
+
+  <main class="p-6 space-y-6 max-w-6xl">
+
+    <!-- Total -->
+    <section class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="bg-panel border border-line rounded-lg p-4">
+        <div class="text-xs text-dim">TOTAL VALUE</div>
+        <div class="text-3xl font-mono font-semibold mt-1" id="pf-total">$500,000</div>
+        <div class="text-xs text-dim mt-1" id="pf-count">6 stocks</div>
+      </div>
+      <div class="bg-panel border border-line rounded-lg p-4">
+        <div class="text-xs text-dim">MONEY MADE (1 YR)</div>
+        <div class="text-3xl font-mono font-semibold text-up mt-1" id="pf-return">+24.8%</div>
+        <div class="text-xs text-dim mt-1">vs market +15.6%</div>
+      </div>
+      <div class="bg-panel border border-line rounded-lg p-4">
+        <div class="text-xs text-dim">RISK LEVEL</div>
+        <div class="text-3xl font-mono font-semibold mt-1">Medium</div>
+        <div class="text-xs text-dim mt-1">balanced mix</div>
+      </div>
+      <div class="bg-panel border border-line rounded-lg p-4">
+        <div class="text-xs text-dim">BEAT THE MARKET BY</div>
+        <div class="text-3xl font-mono font-semibold text-up mt-1">+9.2%</div>
+        <div class="text-xs text-dim mt-1">your mix vs S&amp;P 500</div>
+      </div>
+    </section>
+
+    <!-- Mix + chart -->
+    <section class="grid lg:grid-cols-2 gap-6">
+
+      <!-- Donut -->
+      <div class="bg-panel border border-line rounded-lg p-4">
+        <h2 class="font-semibold mb-3">Your mix</h2>
+        <div class="flex items-center gap-6">
+          <svg id="donut-svg" viewBox="0 0 100 100" class="w-44 h-44 shrink-0 -rotate-90">
+            <circle cx="50" cy="50" r="38" fill="none" stroke="#111111" stroke-width="14"/>
+            <circle cx="50" cy="50" r="38" fill="none" stroke="#ff9900" stroke-dasharray="66.8 238.8" stroke-dashoffset="0" stroke-width="14"/>
+            <circle cx="50" cy="50" r="38" fill="none" stroke="#ffb84d" stroke-dasharray="52.5 238.8" stroke-dashoffset="-66.8" stroke-width="14"/>
+            <circle cx="50" cy="50" r="38" fill="none" stroke="#0066da" stroke-dasharray="47.8 238.8" stroke-dashoffset="-119.3" stroke-width="14"/>
+            <circle cx="50" cy="50" r="38" fill="none" stroke="#888888" stroke-dasharray="35.8 238.8" stroke-dashoffset="-167.1" stroke-width="14"/>
+            <circle cx="50" cy="50" r="38" fill="none" stroke="#333333" stroke-dasharray="23.9 238.8" stroke-dashoffset="-202.9" stroke-width="14"/>
+            <circle cx="50" cy="50" r="38" fill="none" stroke="#808080" stroke-dasharray="11.9 238.8" stroke-dashoffset="-226.8" stroke-width="14"/>
+          </svg>
+          <div id="donut-legend" class="space-y-1.5 text-sm flex-1">
+            <div class="flex items-center justify-between"><span class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-sm bg-[#ff9900] inline-block"></span>AAPL</span><span class="font-mono">28%</span></div>
+            <div class="flex items-center justify-between"><span class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-sm bg-[#ffb84d] inline-block"></span>NVDA</span><span class="font-mono">22%</span></div>
+            <div class="flex items-center justify-between"><span class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-sm bg-[#0066da] inline-block"></span>QQQ</span><span class="font-mono">20%</span></div>
+            <div class="flex items-center justify-between"><span class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-sm bg-[#888888] inline-block"></span>MSFT</span><span class="font-mono">15%</span></div>
+            <div class="flex items-center justify-between"><span class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-sm bg-[#333333] inline-block"></span>SPY</span><span class="font-mono">10%</span></div>
+            <div class="flex items-center justify-between"><span class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-sm bg-[#808080] inline-block"></span>GLD</span><span class="font-mono">5%</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chart -->
+      <div class="bg-panel border border-line rounded-lg p-4">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <h2 class="font-semibold">Your money vs the market</h2>
+          <div class="flex items-center gap-4 text-xs text-dim">
+            <span class="flex items-center gap-1.5"><span class="w-3 h-0.5 bg-amber inline-block"></span>Your mix</span>
+            <span class="flex items-center gap-1.5"><span class="w-3 h-0.5 bg-[#888888] inline-block"></span>S&amp;P 500</span>
+          </div>
+        </div>
+        <svg id="pf-chart" viewBox="0 0 700 220" class="w-full h-52" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="pfFill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#ff9900" stop-opacity="0.2"/>
+              <stop offset="100%" stop-color="#ff9900" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          <path d="M 0,185 L 60,180 L 120,165 L 180,150 L 240,140 L 300,122 L 360,110 L 420,95 L 480,82 L 540,65 L 600,48 L 700,28 L 700,200 L 0,200 Z" fill="url(#pfFill)"/>
+          <path d="M 0,185 L 60,182 L 120,178 L 180,170 L 240,165 L 300,152 L 360,146 L 420,135 L 480,125 L 540,110 L 600,98 L 700,82" fill="none" stroke="#888888" stroke-dasharray="4 3" stroke-width="1.5"/>
+          <path d="M 0,185 L 60,180 L 120,165 L 180,150 L 240,140 L 300,122 L 360,110 L 420,95 L 480,82 L 540,65 L 600,48 L 700,28" fill="none" stroke="#ff9900" stroke-width="2.5" stroke-linejoin="round"/>
+          <circle cx="700" cy="28" r="4" fill="#ff9900"/>
+        </svg>
+        <div class="flex justify-between text-[10px] text-dim font-mono mt-1">
+          <span>M-01</span><span>M-03</span><span>M-05</span><span>M-07</span><span>M-09</span><span>M-12</span>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Holdings table -->
+    <section class="bg-panel border border-line rounded-lg p-4">
+      <h2 class="font-semibold mb-3">What you hold</h2>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-xs text-dim border-b border-line">
+              <th class="py-2 font-medium">Stock</th>
+              <th class="py-2 font-medium text-right">Share of portfolio</th>
+              <th class="py-2 font-medium text-right">Value</th>
+              <th class="py-2 font-medium text-right">Risk vs market</th>
+              <th class="py-2 font-medium text-right">Worst day</th>
+              <th class="py-2 font-medium text-right">Recent trend</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-line/50">
+            <tr class="hover:bg-panel2">
+              <td class="py-2.5 font-medium">AAPL <span class="text-dim text-xs font-normal">Apple Inc.</span></td>
+              <td class="py-2.5 text-right font-mono">28%</td>
+              <td class="py-2.5 text-right font-mono">$140,000</td>
+              <td class="py-2.5 text-right font-mono">1.18</td>
+              <td class="py-2.5 text-right font-mono text-down">-1.42%</td>
+              <td class="py-2.5 text-right"><svg viewBox="0 0 60 16" class="w-16 h-4 ml-auto"><polyline fill="none" points="0,14 10,12 20,13 30,8 40,9 50,4 60,2" stroke="#00c853" stroke-width="1.5"/></svg></td>
+            </tr>
+            <tr class="hover:bg-panel2">
+              <td class="py-2.5 font-medium">NVDA <span class="text-dim text-xs font-normal">NVIDIA Corp.</span></td>
+              <td class="py-2.5 text-right font-mono">22%</td>
+              <td class="py-2.5 text-right font-mono">$110,000</td>
+              <td class="py-2.5 text-right font-mono">1.94</td>
+              <td class="py-2.5 text-right font-mono text-down">-2.85%</td>
+              <td class="py-2.5 text-right"><svg viewBox="0 0 60 16" class="w-16 h-4 ml-auto"><polyline fill="none" points="0,15 10,11 20,9 30,11 40,6 50,2 60,1" stroke="#00c853" stroke-width="1.5"/></svg></td>
+            </tr>
+            <tr class="hover:bg-panel2">
+              <td class="py-2.5 font-medium">QQQ <span class="text-dim text-xs font-normal">Invesco QQQ Trust</span></td>
+              <td class="py-2.5 text-right font-mono">20%</td>
+              <td class="py-2.5 text-right font-mono">$100,000</td>
+              <td class="py-2.5 text-right font-mono">1.22</td>
+              <td class="py-2.5 text-right font-mono text-down">-1.35%</td>
+              <td class="py-2.5 text-right"><svg viewBox="0 0 60 16" class="w-16 h-4 ml-auto"><polyline fill="none" points="0,12 10,10 20,11 30,7 40,8 50,5 60,3" stroke="#888888" stroke-width="1.5"/></svg></td>
+            </tr>
+            <tr class="hover:bg-panel2">
+              <td class="py-2.5 font-medium">MSFT <span class="text-dim text-xs font-normal">Microsoft Corp.</span></td>
+              <td class="py-2.5 text-right font-mono">15%</td>
+              <td class="py-2.5 text-right font-mono">$75,000</td>
+              <td class="py-2.5 text-right font-mono">1.04</td>
+              <td class="py-2.5 text-right font-mono text-down">-1.18%</td>
+              <td class="py-2.5 text-right"><svg viewBox="0 0 60 16" class="w-16 h-4 ml-auto"><polyline fill="none" points="0,10 10,9 20,8 30,9 40,6 50,4 60,4" stroke="#888888" stroke-width="1.5"/></svg></td>
+            </tr>
+            <tr class="hover:bg-panel2">
+              <td class="py-2.5 font-medium">SPY <span class="text-dim text-xs font-normal">SPDR S&amp;P 500 ETF</span></td>
+              <td class="py-2.5 text-right font-mono">10%</td>
+              <td class="py-2.5 text-right font-mono">$50,000</td>
+              <td class="py-2.5 text-right font-mono">1.00</td>
+              <td class="py-2.5 text-right font-mono text-down">-0.98%</td>
+              <td class="py-2.5 text-right"><svg viewBox="0 0 60 16" class="w-16 h-4 ml-auto"><polyline fill="none" points="0,11 10,10 20,10 30,8 40,8 50,6 60,5" stroke="#808080" stroke-width="1.5"/></svg></td>
+            </tr>
+            <tr class="hover:bg-panel2">
+              <td class="py-2.5 font-medium">GLD <span class="text-dim text-xs font-normal">SPDR Gold Shares</span></td>
+              <td class="py-2.5 text-right font-mono">5%</td>
+              <td class="py-2.5 text-right font-mono">$25,000</td>
+              <td class="py-2.5 text-right font-mono">0.14</td>
+              <td class="py-2.5 text-right font-mono text-down">-0.64%</td>
+              <td class="py-2.5 text-right"><svg viewBox="0 0 60 16" class="w-16 h-4 ml-auto"><polyline fill="none" points="0,5 10,7 20,4 30,6 40,5 50,6 60,5" stroke="#808080" stroke-width="1.5"/></svg></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+// ===== HFT-Engine portfolio live data wiring =====
+const $ = id => document.getElementById(id);
+const fmtMoney = v => "$" + Number(v).toLocaleString("en-US", {maximumFractionDigits: 0});
+const COLORS = ["#ff9900", "#ffb84d", "#0066da", "#888888", "#333333", "#808080", "#00E676", "#FF5252"];
+
+function toast(msg, ok) {
+  let t = document.getElementById("toast");
+  if (!t) {
+    t = document.createElement("div");
+    t.id = "toast";
+    t.style.cssText = "position:fixed;bottom:20px;right:20px;z-index:999;padding:10px 16px;border-radius:6px;font:500 13px JetBrains Mono,monospace;transition:opacity .3s";
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.background = ok ? "#0d3b1e" : "#3b0d0d";
+  t.style.border = "1px solid " + (ok ? "#00E676" : "#FF5252");
+  t.style.color = ok ? "#00E676" : "#FF5252";
+  t.style.opacity = 1;
+  clearTimeout(t._tm);
+  t._tm = setTimeout(() => t.style.opacity = 0, 3500);
+}
+
+function buildPath(values, w, h, pad = 4) {
+  if (!values.length) return "";
+  const min = Math.min(...values), max = Math.max(...values);
+  const span = (max - min) || 1;
+  return values.map((v, i) => {
+    const x = pad + (i / (values.length - 1)) * (w - 2 * pad);
+    const y = h - pad - ((v - min) / span) * (h - 2 * pad);
+    return (i === 0 ? "M" : "L") + x.toFixed(1) + "," + y.toFixed(1);
+  }).join(" ");
+}
+
+function drawDonut(perSymbol) {
+  const svg = $("donut-svg");
+  if (!svg) return;
+  const circ = 2 * Math.PI * 38;
+  const weights = perSymbol.map(r => Math.abs(r.metrics.final_equity));
+  const wSum = weights.reduce((a, b) => a + b, 0) || 1;
+  let offset = 0;
+  svg.innerHTML = `<circle cx="50" cy="50" r="38" fill="none" stroke="#111111" stroke-width="14"/>` +
+    perSymbol.map((r, i) => {
+      const frac = weights[i] / wSum;
+      const dash = frac * circ;
+      const el = `<circle cx="50" cy="50" r="38" fill="none" stroke="${COLORS[i % COLORS.length]}" stroke-dasharray="${dash.toFixed(1)} ${circ.toFixed(1)}" stroke-dashoffset="${(-offset).toFixed(1)}" stroke-width="14"/>`;
+      offset += dash;
+      return el;
+    }).join("");
+  const leg = $("donut-legend");
+  leg.innerHTML = perSymbol.map((r, i) => {
+    const w = weights[i] / wSum * 100;
+    return `<div class="flex items-center justify-between"><span class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-sm" style="background:${COLORS[i % COLORS.length]}" inline-block></span>${r.metrics.symbol}</span><span class="font-mono">${w.toFixed(0)}%</span></div>`;
+  }).join("");
+}
+
+function drawPfChart(combined) {
+  const svg = $("pf-chart");
+  if (!svg || !combined.length) return;
+  const W = 700, H = 220, pad = 6;
+  const eq = combined.map(p => p.equity);
+  const path = buildPath(eq, W, H, pad);
+  const area = path + ` L ${W - pad},${H - pad} L ${pad},${H - pad} Z`;
+  svg.innerHTML = `
+    <defs><linearGradient id="pfFill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ff9900" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#ff9900" stop-opacity="0"/>
+    </linearGradient></defs>
+    <path d="${area}" fill="url(#pfFill)"/>
+    <path d="${path}" fill="none" stroke="#ff9900" stroke-width="2.5" stroke-linejoin="round"/>
+  `;
+}
+
+async function loadPortfolio() {
+  const symbols = ["AAPL", "MSFT", "NVDA", "SPY", "QQQ", "GLD"];
+  const capital = 500000;
+  try {
+    const r = await fetch("/api/portfolio", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({symbols, start: "2023-01-01", end: "2024-01-01", strategy: "sma", capital})});
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || "portfolio failed");
+    drawDonut(d.per_symbol);
+    drawPfChart(d.combined);
+    $("pf-total").textContent = fmtMoney(capital);
+    $("pf-count").textContent = d.symbols.length + " stocks";
+    const m = d.combined_metrics;
+    if (m && m.total_return_pct !== undefined) {
+      $("pf-return").textContent = (m.total_return_pct >= 0 ? "+" : "") + m.total_return_pct.toFixed(1) + "%";
+      toast(`Portfolio: ${m.total_return_pct >= 0 ? "+" : ""}${m.total_return_pct.toFixed(2)}% return, Sharpe ${m.sharpe.toFixed(2)}`, true);
+    }
+  } catch (e) {
+    toast("Error: " + e.message, false);
+  }
+}
+
+loadPortfolio();
+</script>
+
+</body>
+</html>

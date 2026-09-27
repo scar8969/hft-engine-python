@@ -7,7 +7,9 @@ import numpy as np
 def compute_metrics(equity_curve, trades, initial_capital, risk_free=0.0):
     equities = np.array([e for _, e in equity_curve])
     if len(equities) < 2:
-        return {}
+        return {"total_return_pct": 0.0, "max_drawdown_pct": 0.0, "sharpe": 0.0,
+                "trade_count": 0, "win_rate_pct": 0.0, "avg_win": 0.0,
+                "avg_loss": 0.0, "final_equity": float(initial_capital)}
 
     # total return
     total_return = (equities[-1] / initial_capital - 1) * 100
