@@ -14,6 +14,10 @@
 
 ![Portfolio — your mix vs the market](screenshots/portfolio.png)
 
+![Strategies — compare the built-in trading rules](screenshots/strategies.png)
+
+![Live trading — the engine running in real time](screenshots/live-trading.png)
+
 Run the full dashboard + API:
 
 ```bash
@@ -140,7 +144,7 @@ Interactive backtesting with per-symbol metrics, equity curves, and trade tables
 | `demo_gif.py` | animated footprint demo GIF (embedded above) |
 | `footprint.py` | ATAS-style footprint chart (bid/ask volume per level) |
 | `papertrade.py` | live paper trading loop (polls latest bar, no real orders) |
-| `alpaca_bridge.py` | live bridge to Alpaca's free paper account |
+| `engine/broker.py` | order router — dryrun / direct / Alpaca paper backends |
 
 ## Sample results
 

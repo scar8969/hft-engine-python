@@ -77,6 +77,7 @@ class OrderRouter:
 
         order = self._new_order(symbol, side, qty, price, client_id)
         t0 = time.perf_counter()
+        t0_wall = time.time()
 
         if self.backend == "alpaca":
             order = self._submit_alpaca(order)
@@ -86,8 +87,9 @@ class OrderRouter:
             order = self._submit_direct(order)
 
         order["latency_ms"] = round((time.perf_counter() - t0) * 1000, 3)
-        order["ack_ts"] = order.get("ack_ts") or (t0 + order["latency_ms"] / 4000)
-        order["fill_ts"] = order.get("fill_ts") or (t0 + order["latency_ms"] / 1000)
+        # wall-clock timestamps (same time base as the engine's signal ts)
+        order["ack_ts"] = order.get("ack_ts") or (t0_wall + order["latency_ms"] / 4000)
+        order["fill_ts"] = order.get("fill_ts") or (t0_wall + order["latency_ms"] / 1000)
         self.store.upsert_order(order)
         return order
 
