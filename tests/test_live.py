@@ -89,6 +89,14 @@ class TestOrderRouter:
         router.flatten("AAPL", 105.0)
         assert store.get_position("AAPL")["qty"] == 0
 
+    def test_cash_tracks_fills(self, store):
+        router = OrderRouter(store, backend="dryrun", fill_latency_ms=0)
+        router.submit("AAPL", "BUY", 10, 100.0)
+        assert float(store.get_meta("cash", "100000")) < 100000.0  # paid for shares
+        router.submit("AAPL", "SELL", 10, 105.0)
+        assert float(store.get_meta("cash", "100000")) > 100000.0  # proceeds back
+        assert store.get_position("AAPL")["qty"] == 0
+
 
 # ── LatencyTracker ─────────────────────────────────────────────────
 class TestLatency:

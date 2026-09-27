@@ -131,12 +131,12 @@ class OrderRouter:
         req = self._MarketOrderRequest(
             symbol=order["symbol"], qty=order["qty"], side=side, time_in_force=self._TIF.DAY,
         )
-        resp = self._client.submit_order(req)
+        resp = self._alpaca.submit_order(req)
         order = self._transition(order, "ACK", id=resp.id)
         # poll once for fill (paper fills fast)
         for _ in range(10):
             time.sleep(0.2)
-            status = self._client.get_order_by_id(resp.id)
+            status = self._alpaca.get_order_by_id(resp.id)
             if status.status in ("filled", "partially_filled"):
                 filled = float(status.filled_qty)
                 avg = float(status.filled_avg_price)
@@ -148,7 +148,7 @@ class OrderRouter:
                 return self._transition(order, "REJECTED", reason=status.status)
         return self._transition(order, "ACK")  # still working
 
-    # ── position tracking ───────────────────────────────────────────
+    # ── position + cash tracking ────────────────────────────────────
     def _apply_position(self, symbol: str, side: str, qty: float, price: float):
         pos = self.store.get_position(symbol)
         cur_qty = pos["qty"] if pos else 0.0
@@ -156,10 +156,16 @@ class OrderRouter:
         if side == "BUY":
             new_qty = cur_qty + qty
             new_avg = (cur_avg * cur_qty + price * qty) / new_qty if new_qty else 0.0
+            self._adjust_cash(-price * qty)
         else:
             new_qty = cur_qty - qty
             new_avg = cur_avg if new_qty != 0 else 0.0
+            self._adjust_cash(price * qty)
         self.store.set_position(symbol, round(new_qty, 4), round(new_avg, 4))
+
+    def _adjust_cash(self, delta: float):
+        cash = float(self.store.get_meta("cash", "100000"))
+        self.store.set_meta("cash", str(round(cash + delta, 2)))
 
     def flatten(self, symbol: str, price: float | None = None) -> dict | None:
         """Close the position in symbol (marketable). Returns the order or None."""

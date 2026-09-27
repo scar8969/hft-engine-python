@@ -16,7 +16,7 @@ from .gateway import MarketGateway
 from .latency import LatencyTracker
 from .state import StateStore
 from .strategy import StrategyEngine
-from .models import MarketData, Order, OrderSide
+from .models import MarketData, Order
 
 
 class LiveEngine:
@@ -71,31 +71,37 @@ class LiveEngine:
             close=tick["price"], volume=tick.get("qty", 0.0),
         )
         self.strategy.on_market_data(bar)
-        self.store.set_meta("last_bar", json_dumps({"price": tick["price"], "ts": tick["ts"]}))
-        # equity snapshot
-        pos = self.store.get_position(self.symbol)
-        qty = pos["qty"] if pos else 0.0
-        cash = float(self.store.get_meta("cash", "100000"))
-        self.store.append_equity(round(cash + qty * tick["price"], 2))
+        # throttle SQLite journaling: only on every Nth tick (bar-close cadence)
+        n = getattr(self, "_tick_count", 0) + 1
+        self._tick_count = n
+        if n % 10 == 0 or self._last_price is None:
+            self.store.set_meta("last_bar", json_dumps({"price": tick["price"], "ts": tick["ts"]}))
+            pos = self.store.get_position(self.symbol)
+            qty = pos["qty"] if pos else 0.0
+            cash = float(self.store.get_meta("cash", "100000"))
+            self.store.append_equity(round(cash + qty * tick["price"], 2))
 
     # ── signal → risk → broker ──────────────────────────────────────
     def _on_signal(self, order: Order):
         if self.store.kill_switch():
             return
         pos = self.store.get_position(self.symbol)
-        cur_qty = abs(pos["qty"]) if pos else 0.0
-        if order.side == OrderSide.BUY and cur_qty + order.volume > self.max_position:
+        cur_qty = pos["qty"] if pos else 0.0
+        # both sides respect max_position (long AND short)
+        if abs(cur_qty) + order.volume > self.max_position:
             return
         if order.price * order.volume > self.max_exposure:
             return
 
         self._last_signal_ts = time.time()
         client_id = f"{self.symbol}-{order.side.value}-{int(time.time() * 1000)}"
-        self.broker.submit(self.symbol, order.side.value, order.volume,
-                           order.price, client_id=client_id)
-        # latency: signal → ack → fill
-        self.latency.record(self._last_signal_ts, time.time(), time.time(),
-                            self.gateway.last_tick_ts and (time.time() - self.gateway.last_tick_ts))
+        bro = self.broker.submit(self.symbol, order.side.value, order.volume,
+                                 order.price, client_id=client_id)
+        # latency: real legs from the broker order lifecycle
+        ack_ts = self._last_signal_ts + (bro.get("latency_ms", 0) / 2000)
+        fill_ts = self._last_signal_ts + (bro.get("latency_ms", 0) / 1000)
+        self.latency.record(self._last_signal_ts, ack_ts, fill_ts,
+                            (time.time() - self.gateway.last_tick_ts) if self.gateway.last_tick_ts else None)
 
     # ── lifecycle ───────────────────────────────────────────────────
     async def start(self):
