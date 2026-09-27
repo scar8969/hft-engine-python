@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>HFT-Engine — Live Trading</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        bg: "#000000", panel: "#0a0a0a", panel2: "#111111",
+        line: "#262626", amber: "#ff9900", amberdim: "#b36b00",
+        up: "#00c853", down: "#ff3d3d", txt: "#d9d9d9", dim: "#808080",
+      },
+      fontFamily: { sans: ["Inter", "sans-serif"], mono: ["JetBrains Mono", "monospace"] },
+    },
+  },
+};
+</script>
+<style>
+  .material-symbols-outlined { font-size: 18px; line-height: 1; display: inline-block; vertical-align: middle; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: #050505; }
+  ::-webkit-scrollbar-thumb { background: #262626; border-radius: 3px; }
+  .pulse-live { animation: pulse 1.4s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% {opacity:1} 50% {opacity:0.35} }
+</style>
+</head>
+<body class="bg-bg text-txt font-sans antialiased">
+
+<!-- ===== Sidebar ===== -->
+<aside class="fixed top-0 left-0 z-40 h-screen w-14 lg:w-56 flex flex-col bg-[#050505] border-r border-line">
+  <div class="h-14 flex items-center gap-2.5 px-3 border-b border-line shrink-0">
+    <div class="w-8 h-8 rounded bg-panel2 border border-line flex items-center justify-center text-amber text-base">⚡</div>
+    <div class="hidden lg:block">
+      <div class="text-sm font-semibold leading-tight">HFT-Engine</div>
+      <div class="text-[10px] text-dim">Trading simulator</div>
+    </div>
+  </div>
+  <nav class="flex-1 py-3 px-2 flex flex-col gap-1">
+    <a href="index.html" class="flex items-center gap-2.5 px-2.5 py-2 rounded text-sm text-dim hover:text-txt hover:bg-panel2 transition-colors">
+      <span class="material-symbols-outlined">candlestick_chart</span><span class="hidden lg:inline">Test a Strategy</span>
+    </a>
+    <a href="orderflow.html" class="flex items-center gap-2.5 px-2.5 py-2 rounded text-sm text-dim hover:text-txt hover:bg-panel2 transition-colors">
+      <span class="material-symbols-outlined">query_stats</span><span class="hidden lg:inline">Live Market</span>
+    </a>
+    <a href="portfolio.html" class="flex items-center gap-2.5 px-2.5 py-2 rounded text-sm text-dim hover:text-txt hover:bg-panel2 transition-colors">
+      <span class="material-symbols-outlined">pie_chart</span><span class="hidden lg:inline">My Portfolio</span>
+    </a>
+    <a href="strategies.html" class="flex items-center gap-2.5 px-2.5 py-2 rounded text-sm text-dim hover:text-txt hover:bg-panel2 transition-colors">
+      <span class="material-symbols-outlined">psychology</span><span class="hidden lg:inline">Strategies</span>
+    </a>
+    <a href="live.html" class="flex items-center gap-2.5 px-2.5 py-2 rounded text-sm bg-amber/10 text-amber border-l-2 border-amber font-medium">
+      <span class="material-symbols-outlined">bolt</span><span class="hidden lg:inline">Live Trading</span>
+    </a>
+  </nav>
+  <div class="p-3 border-t border-line hidden lg:block">
+    <div class="text-[10px] text-dim">Demo mode — no real money</div>
+  </div>
+</aside>
+
+<!-- ===== Main ===== -->
+<div class="ml-14 lg:ml-56 min-h-screen">
+  <header class="px-6 pt-6 pb-4 border-b border-line">
+    <h1 class="text-2xl font-semibold">Live Trading</h1>
+    <p class="text-sm text-dim mt-1">The engine running in real time — orders, positions, latency, and the kill switch.</p>
+  </header>
+
+  <main class="p-6 space-y-6 max-w-6xl">
+
+    <!-- Controls -->
+    <section class="bg-panel border border-line rounded-lg p-4">
+      <div class="flex flex-wrap items-end gap-4">
+        <div>
+          <label class="block text-xs text-dim mb-1.5">Symbol</label>
+          <input id="sym" value="AAPL" class="bg-panel2 border border-line rounded px-3 py-2 text-sm font-mono w-28 focus:border-amber focus:outline-none"/>
+        </div>
+        <div>
+          <label class="block text-xs text-dim mb-1.5">Strategy</label>
+          <select id="strat" class="bg-panel2 border border-line rounded px-3 py-2 text-sm w-44 focus:border-amber focus:outline-none">
+            <option value="sma">Trend Follower</option>
+            <option value="rsi">Bounce Back</option>
+            <option value="momentum">Momentum Rider</option>
+            <option value="threshold">Breakout Hunter</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs text-dim mb-1.5">Order backend</label>
+          <select id="backend" class="bg-panel2 border border-line rounded px-3 py-2 text-sm w-40 focus:border-amber focus:outline-none">
+            <option value="dryrun">Simulated (dry-run)</option>
+            <option value="direct">Direct (queue model)</option>
+            <option value="alpaca">Alpaca paper</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs text-dim mb-1.5">Data feed</label>
+          <select id="gateway" class="bg-panel2 border border-line rounded px-3 py-2 text-sm w-40 focus:border-amber focus:outline-none">
+            <option value="poll">Poll (equities)</option>
+            <option value="binance">Binance WS (crypto)</option>
+          </select>
+        </div>
+        <button id="start-btn" class="bg-amber text-black font-semibold text-sm px-5 py-2.5 rounded hover:bg-amberdim transition-colors">Start</button>
+        <button id="flatten-btn" class="bg-panel2 border border-line text-txt font-semibold text-sm px-5 py-2.5 rounded hover:border-amber transition-colors">Flatten</button>
+        <button id="stop-btn" class="bg-panel2 border border-line text-txt font-semibold text-sm px-5 py-2.5 rounded hover:border-amber transition-colors">Stop</button>
+        <button id="kill-btn" class="bg-down/10 border border-down text-down font-semibold text-sm px-5 py-2.5 rounded hover:bg-down hover:text-black transition-colors">KILL SWITCH</button>
+        <button id="resume-btn" class="bg-panel2 border border-line text-txt font-semibold text-sm px-5 py-2.5 rounded hover:border-amber transition-colors hidden">Resume</button>
+      </div>
+    </section>
+
+    <!-- Status strip -->
+    <section id="status-strip" class="bg-panel border border-line rounded-lg p-4 grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div><div class="text-xs text-dim">ENGINE STATE</div><div id="st-state" class="text-lg font-mono font-semibold mt-1">stopped</div></div>
+      <div><div class="text-xs text-dim">LAST PRICE</div><div id="st-price" class="text-lg font-mono font-semibold mt-1">—</div></div>
+      <div><div class="text-xs text-dim">POSITION</div><div id="st-pos" class="text-lg font-mono font-semibold mt-1">0</div></div>
+      <div><div class="text-xs text-dim">FEED</div><div id="st-feed" class="text-lg font-mono font-semibold mt-1">—</div></div>
+    </section>
+
+    <!-- Latency -->
+    <section class="bg-panel border border-line rounded-lg p-4">
+      <h2 class="font-semibold mb-3">Order latency (last 200 orders)</h2>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="bg-panel2 border border-line rounded p-3"><div class="text-xs text-dim">SIGNAL → ACK</div><div id="lat-ack" class="text-xl font-mono font-semibold text-amber mt-1">—</div></div>
+        <div class="bg-panel2 border border-line rounded p-3"><div class="text-xs text-dim">ACK → FILL</div><div id="lat-fill" class="text-xl font-mono font-semibold text-amber mt-1">—</div></div>
+        <div class="bg-panel2 border border-line rounded p-3"><div class="text-xs text-dim">TOTAL (E2E)</div><div id="lat-total" class="text-xl font-mono font-semibold text-amber mt-1">—</div></div>
+        <div class="bg-panel2 border border-line rounded p-3"><div class="text-xs text-dim">FEED AGE</div><div id="lat-feed" class="text-xl font-mono font-semibold mt-1">—</div></div>
+      </div>
+    </section>
+
+    <!-- Orders + trades -->
+    <section class="grid lg:grid-cols-2 gap-6">
+      <div class="bg-panel border border-line rounded-lg p-4">
+        <h2 class="font-semibold mb-3">Recent orders</h2>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead><tr class="text-left text-xs text-dim border-b border-line">
+              <th class="py-2 font-medium">Time</th><th class="py-2 font-medium">Sym</th><th class="py-2 font-medium">Side</th>
+              <th class="py-2 font-medium text-right">Qty</th><th class="py-2 font-medium text-right">Price</th>
+              <th class="py-2 font-medium text-right">Lat</th><th class="py-2 font-medium text-center">Status</th>
+            </tr></thead>
+            <tbody id="orders-body" class="divide-y divide-line/50"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="bg-panel border border-line rounded-lg p-4">
+        <h2 class="font-semibold mb-3">Recent trades</h2>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead><tr class="text-left text-xs text-dim border-b border-line">
+              <th class="py-2 font-medium">Time</th><th class="py-2 font-medium">Sym</th><th class="py-2 font-medium">Side</th>
+              <th class="py-2 font-medium text-right">Qty</th><th class="py-2 font-medium text-right">Price</th>
+            </tr></thead>
+            <tbody id="trades-body" class="divide-y divide-line/50"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Equity -->
+    <section class="bg-panel border border-line rounded-lg p-4">
+      <h2 class="font-semibold mb-3">Equity curve (live)</h2>
+      <svg id="eq-chart" viewBox="0 0 800 160" class="w-full h-40" preserveAspectRatio="none"></svg>
+    </section>
+
+  </main>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const api = (action, body = {}) =>
+  fetch("/api/live", {method: "POST", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({action, ...body})}).then(r => r.json());
+
+function fmt(v) { return v == null ? "—" : v; }
+function fmtMs(v) { return v == null ? "—" : v + " ms"; }
+
+function render(d) {
+  const st = d;
+  $("st-state").textContent = st.engine_state || "stopped";
+  $("st-state").className = "text-lg font-mono font-semibold mt-1 " +
+    ((st.kill_switch) ? "text-down" : (st.running ? "text-up" : "text-dim"));
+  $("st-price").textContent = st.last_price != null ? "$" + st.last_price : "—";
+  const pos = st.position;
+  $("st-pos").textContent = pos ? pos.qty : "0";
+  $("st-pos").className = "text-lg font-mono font-semibold mt-1 " + (pos && pos.qty > 0 ? "text-up" : (pos && pos.qty < 0 ? "text-down" : ""));
+  const feed = st.feed || {};
+  $("st-feed").textContent = feed.stale ? "STALE" : (feed.last_tick ? "live" : "—");
+  $("st-feed").className = "text-lg font-mono font-semibold mt-1 " + (feed.stale ? "text-down" : "text-up");
+  $("resume-btn").classList.toggle("hidden", !st.kill_switch);
+
+  const lat = st.latency || {};
+  $("lat-ack").textContent = fmtMs(lat.signal_to_ack_ms);
+  $("lat-fill").textContent = fmtMs(lat.ack_to_fill_ms);
+  $("lat-total").textContent = fmtMs(lat.total_ms);
+  $("lat-feed").textContent = fmtMs(lat.gateway_age_ms);
+
+  const store = d.store || {};
+  const orders = store.orders || [];
+  $("orders-body").innerHTML = orders.slice(0, 15).map(o => `
+    <tr class="hover:bg-panel2">
+      <td class="py-2 text-dim font-mono text-xs">${(o.created_at || "").slice(11, 19)}</td>
+      <td class="py-2 font-medium">${o.symbol}</td>
+      <td class="py-2 ${o.side === "BUY" ? "text-up" : "text-down"} font-semibold">${o.side}</td>
+      <td class="py-2 text-right font-mono">${o.qty}</td>
+      <td class="py-2 text-right font-mono">${o.avg_fill || o.price || "—"}</td>
+      <td class="py-2 text-right font-mono text-dim">${o.latency_ms != null ? o.latency_ms + "ms" : "—"}</td>
+      <td class="py-2 text-center"><span class="text-[10px] px-2 py-0.5 rounded font-semibold ${
+        o.status === "FILLED" ? "bg-up/10 text-up border border-up/30" :
+        o.status === "REJECTED" ? "bg-down/10 text-down border border-down/30" :
+        "bg-amber/10 text-amber border border-amber/30"}">${o.status}</span></td>
+    </tr>`).join("") || '<tr><td colspan="7" class="py-4 text-center text-dim text-sm">No orders yet</td></tr>';
+
+  const trades = store.trades || [];
+  $("trades-body").innerHTML = trades.slice(0, 15).map(t => `
+    <tr class="hover:bg-panel2">
+      <td class="py-2 text-dim font-mono text-xs">${(t.ts || "").slice(11, 19)}</td>
+      <td class="py-2 font-medium">${t.symbol}</td>
+      <td class="py-2 ${t.side === "BUY" ? "text-up" : "text-down"} font-semibold">${t.side}</td>
+      <td class="py-2 text-right font-mono">${t.qty}</td>
+      <td class="py-2 text-right font-mono">${t.price}</td>
+    </tr>`).join("") || '<tr><td colspan="5" class="py-4 text-center text-dim text-sm">No trades yet</td></tr>';
+
+  const eq = store.equity || [];
+  if (eq.length > 1) {
+    const vals = eq.map(p => p.equity);
+    const min = Math.min(...vals), max = Math.max(...vals), span = (max - min) || 1;
+    const W = 800, H = 160, pad = 8;
+    const pts = vals.map((v, i) => {
+      const x = pad + (i / (vals.length - 1)) * (W - 2 * pad);
+      const y = H - pad - ((v - min) / span) * (H - 2 * pad);
+      return (i === 0 ? "M" : "L") + x.toFixed(1) + "," + y.toFixed(1);
+    }).join(" ");
+    $("eq-chart").innerHTML = `<path d="${pts}" fill="none" stroke="#ff9900" stroke-width="2" stroke-linejoin="round"/>`;
+  }
+}
+
+async function refresh() {
+  try { render(await api("status")); } catch (e) { /* server restarting */ }
+}
+
+$("start-btn").onclick = async () => {
+  $("start-btn").textContent = "Starting…";
+  const d = await api("start", {symbol: $("sym").value.trim().toUpperCase() || "AAPL",
+    strategy: $("strat").value, backend: $("backend").value, gateway: $("gateway").value});
+  $("start-btn").textContent = "Start";
+  render(d);
+};
+$("stop-btn").onclick = async () => render(await api("stop"));
+$("flatten-btn").onclick = async () => render(await api("flatten"));
+$("kill-btn").onclick = async () => render(await api("kill"));
+$("resume-btn").onclick = async () => render(await api("resume"));
+
+refresh();
+setInterval(refresh, 2000);
+</script>
+</body>
+</html>

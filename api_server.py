@@ -15,8 +15,10 @@ Endpoints:
 
 from __future__ import annotations
 
+import asyncio
 import json
 import sys
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -26,6 +28,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from engine import HFTEngine  # noqa: E402
 from backtest import compute_metrics  # noqa: E402
+from engine.state import StateStore  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent
 DASH = ROOT / "dashboard"
@@ -141,6 +144,96 @@ def _orderflow(cfg: dict) -> dict:
     }
 
 
+# ── live engine singleton ────────────────────────────────────────────
+_LIVE = {"engine": None, "store": None, "loop": None, "thread": None}
+
+
+def _live_loop(eng):  # noqa: ANN001
+    """Run the engine's event loop forever (daemon thread)."""
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    _LIVE["loop"] = loop
+    loop.run_until_complete(eng.start())
+
+
+def _live(cfg: dict) -> dict:
+    """/api/live/* — start/stop/status/flatten/kill for the live engine."""
+    import threading
+    print(f"[live-api] action={cfg.get('action')}", flush=True)
+
+    action = cfg.get("action", "status")
+    store = _LIVE["store"] or StateStore(cfg.get("db", "hft_live.db"))
+    _LIVE["store"] = store
+    eng = _LIVE["engine"]
+    loop = _LIVE["loop"]
+
+    if action == "start":
+        if eng and eng._running:
+            return {"ok": True, "message": "already running", **eng.status()}
+        from engine.live_engine import LiveEngine
+        eng = LiveEngine(
+            cfg.get("symbol", "AAPL"), store,
+            backend=cfg.get("backend", "dryrun"),
+            strategy=cfg.get("strategy", "sma"),
+            fast=int(cfg.get("fast", 20)), slow=int(cfg.get("slow", 50)),
+            threshold=float(cfg.get("threshold", 100.0)),
+            rsi_period=int(cfg.get("rsi_period", 14)),
+            oversold=float(cfg.get("oversold", 30.0)),
+            overbought=float(cfg.get("overbought", 70.0)),
+            mom_period=int(cfg.get("mom_period", 50)),
+            qty=int(cfg.get("qty", 10)),
+            max_position=int(cfg.get("max_position", 100)),
+            max_exposure=float(cfg.get("max_exposure", 100_000.0)),
+            gateway_backend=cfg.get("gateway", "poll"),
+        )
+        _LIVE["engine"] = eng
+        _LIVE["thread"] = threading.Thread(target=_live_loop, args=(eng,), daemon=True)
+        _LIVE["thread"].start()
+        # wait for the engine to actually be running (warmup + start complete)
+        for _ in range(200):
+            if store.get_meta("engine_state") == "running":
+                break
+            time.sleep(0.1)
+        return {"ok": True, "message": "started", **eng.status()}
+
+    if eng is None:
+        return {"ok": False, "error": "engine not started", "store": store.snapshot()}
+
+    def _run(coro):
+        """Run a coroutine on the engine's event loop from another thread, awaiting completion."""
+        if loop is not None and loop.is_running():
+            import concurrent.futures
+            fut = concurrent.futures.Future()
+
+            async def _wrap():
+                try:
+                    await coro
+                    fut.set_result(True)
+                except Exception as e:  # noqa: BLE001
+                    fut.set_exception(e)
+
+            loop.call_soon_threadsafe(lambda: asyncio.ensure_future(_wrap()))
+            fut.result(timeout=30)
+            return
+        return asyncio.run(coro)
+
+    if action == "stop":
+        _run(eng.stop())
+        return {"ok": True, "message": "stopped", **eng.status()}
+    if action == "flatten":
+        _run(eng.flatten())
+        return {"ok": True, "message": "flattened", **eng.status()}
+    if action == "kill":
+        eng.kill()
+        return {"ok": True, "message": "kill switch engaged", "kill_switch": True}
+    if action == "resume":
+        store.set_kill_switch(False)
+        store.set_meta("engine_state", "running")
+        return {"ok": True, "message": "resumed", "kill_switch": False}
+    # status
+    return {"ok": True, **eng.status(), "store": store.snapshot()}
+
+
 class Handler(BaseHTTPRequestHandler):
     def _json(self, code: int, payload: dict):
         body = json.dumps(payload).encode()
@@ -182,7 +275,12 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_POST(self):
-        cfg = self._read_body()
+        try:
+            cfg = self._read_body()
+        except Exception as exc:
+            import traceback
+            traceback.print_exc()
+            return self._json(400, {"error": f"bad body: {exc}"})
         try:
             if self.path == "/api/backtest":
                 return self._json(200, _run_one(cfg.get("symbol", "AAPL"), cfg))
@@ -192,6 +290,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(200, _strategies(cfg))
             if self.path == "/api/orderflow":
                 return self._json(200, _orderflow(cfg))
+            if self.path.startswith("/api/live"):
+                return self._json(200, _live(cfg))
             return self._json(404, {"error": f"unknown endpoint {self.path}"})
         except Exception as exc:
             import traceback

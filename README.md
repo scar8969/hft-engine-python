@@ -21,6 +21,35 @@ python api_server.py 8765
 # open http://127.0.0.1:8765
 ```
 
+## Live trading
+
+The engine runs in real time: market feed → strategy → risk → broker → SQLite journal.
+
+```bash
+# CLI (dry-run by default — no real money, no keys needed)
+python live_engine.py --symbol AAPL --strategy sma --backend dryrun --gateway poll
+
+# or via the dashboard: http://127.0.0.1:8765/live.html
+```
+
+**Backends:**
+- `dryrun` — simulated fills at last price + slippage (default, zero setup)
+- `direct` — marketable order simulation with queue-position partial fills
+- `alpaca` — real paper-trading orders (set `ALPACA_API_KEY` / `ALPACA_SECRET_KEY`)
+
+**Data feeds:**
+- `poll` — yfinance 1m bars (equities, no key)
+- `binance` — Binance public WebSocket trade stream (crypto, no key)
+
+**What's real:**
+- Order lifecycle `NEW → ACK → PARTIAL → FILLED/REJECTED`, idempotent by client_id
+- Pre-trade risk (max position, max exposure) + kill switch
+- Per-leg latency instrumentation (signal→ACK, ACK→fill, total, feed age)
+- SQLite journaling — positions/orders/equity survive restart
+- Feed health: heartbeat, reconnection, stale detection
+
+API: `POST /api/live` with `{action: start|stop|status|flatten|kill|resume}`.
+
 [![CI](https://github.com/scar8969/hft-engine-python/actions/workflows/ci.yml/badge.svg)](https://github.com/scar8969/hft-engine-python/actions/workflows/ci.yml)
 ![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg) ![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue) ![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen)
 
