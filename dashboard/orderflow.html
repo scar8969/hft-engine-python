@@ -240,14 +240,15 @@ function drawTradesFeed(d) {
   if (!feed) return;
   // synthesize trade rows from footprint deltas
   const n = Math.min(8, d.bars.length);
+  const midLvl = Math.floor(d.levels.length / 2);
   let html = "";
   for (let i = n - 1; i >= 0; i--) {
     const b = d.bars[i];
-    const buy = d.buy[0] ? d.buy[Math.floor(d.levels.length / 2)][i] : 0;
-    const sell = d.sell[0] ? d.sell[Math.floor(d.levels.length / 2)][i] : 0;
+    const buy = d.buy[i] ? d.buy[i][midLvl] : 0;
+    const sell = d.sell[i] ? d.sell[i][midLvl] : 0;
     const side = buy >= sell ? "BUY" : "SELL";
     const cls = side === "BUY" ? "text-up" : "text-down";
-    const price = d.levels[Math.floor(d.levels.length / 2)];
+    const price = d.levels[midLvl];
     const vol = Math.max(buy, sell);
     html += `<div class="flex items-center justify-between py-2 text-sm">
       <span class="text-dim font-mono text-xs">${b}</span>

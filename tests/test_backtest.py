@@ -27,9 +27,14 @@ class TestReturns:
         assert m["max_drawdown_pct"] == pytest.approx(0.0)
         assert m["sharpe"] == 0.0  # zero-vol guard
 
-    def test_too_short_curve_returns_empty(self):
-        assert compute_metrics([(0, 100.0)], [], 100.0) == {}
-        assert compute_metrics([], [], 100.0) == {}
+    def test_too_short_curve_returns_zero_filled(self):
+        m = compute_metrics([(0, 100.0)], [], 100.0)
+        assert m["total_return_pct"] == 0.0
+        assert m["trade_count"] == 0
+        assert m["final_equity"] == pytest.approx(100.0)
+        m2 = compute_metrics([], [], 100.0)
+        assert m2["total_return_pct"] == 0.0
+        assert m2["final_equity"] == pytest.approx(100.0)
 
 
 class TestDrawdown:
