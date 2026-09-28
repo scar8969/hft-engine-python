@@ -16,11 +16,15 @@ class MarketDataHandler:
         self.on_market_data: Callable[[MarketData], None] = lambda md: None
 
     def connect(self) -> List[MarketData]:
-        """Pull daily bars from yfinance and convert to MarketData objects."""
-        df = yf.download(
-            self.symbol, start=self.start, end=self.end,
-            progress=False, auto_adjust=True,
-        )
+        """Pull daily bars from yfinance (cached) and convert to MarketData objects."""
+        from .cache import load, save
+        df = load(self.symbol, self.start, self.end)
+        if df is None:
+            df = yf.download(
+                self.symbol, start=self.start, end=self.end,
+                progress=False, auto_adjust=True,
+            )
+            save(self.symbol, self.start, self.end, df)
         if df.empty:
             raise RuntimeError(f"No data returned for {self.symbol} {self.start}..{self.end}")
 
