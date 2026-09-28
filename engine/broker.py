@@ -78,6 +78,7 @@ class OrderRouter:
         order = self._new_order(symbol, side, qty, price, client_id)
         t0 = time.perf_counter()
         t0_wall = time.time()
+        order["_t0_wall"] = t0_wall
 
         if self.backend == "alpaca":
             order = self._submit_alpaca(order)
@@ -87,8 +88,10 @@ class OrderRouter:
             order = self._submit_direct(order)
 
         order["latency_ms"] = round((time.perf_counter() - t0) * 1000, 3)
-        # wall-clock timestamps (same time base as the engine's signal ts)
-        order["ack_ts"] = order.get("ack_ts") or (t0_wall + order["latency_ms"] / 4000)
+        # wall-clock timestamps (same time base as the engine's signal ts):
+        # ACK is stamped inside the backend right after the ACK transition,
+        # FILL after the full lifecycle. Fallbacks keep ordering sane.
+        order["ack_ts"] = order.get("ack_ts") or t0_wall
         order["fill_ts"] = order.get("fill_ts") or (t0_wall + order["latency_ms"] / 1000)
         self.store.upsert_order(order)
         return order
@@ -96,11 +99,13 @@ class OrderRouter:
     # ── dryrun: simulate exchange ack + fill ────────────────────────
     def _submit_dryrun(self, order: dict) -> dict:
         order = self._transition(order, "ACK")
+        order["ack_ts"] = order.get("_t0_wall", time.time())
         time.sleep(self.fill_latency_ms / 1000)
         px = order["price"] or 100.0
         slip = px * self.slippage_bps / 10_000
         fill = px + slip if order["side"] == "BUY" else px - slip
         order = self._transition(order, "FILLED", filled_qty=order["qty"], avg_fill=round(fill, 4))
+        order["fill_ts"] = time.time()
         self.store.add_trade(order["symbol"], order["side"], order["qty"], round(fill, 4), order["id"])
         self._apply_position(order["symbol"], order["side"], order["qty"], fill)
         return order
@@ -108,6 +113,7 @@ class OrderRouter:
     # ── direct: marketable order with queue modeling ────────────────
     def _submit_direct(self, order: dict) -> dict:
         order = self._transition(order, "ACK")
+        order["ack_ts"] = order.get("_t0_wall", time.time())
         # simulated queue position: partial fills until filled
         remaining = order["qty"]
         filled = 0.0
@@ -125,6 +131,7 @@ class OrderRouter:
                 order = self._transition(order, "PARTIAL", filled_qty=round(filled, 4))
         avg = sum(c * p for c, p in fills) / filled
         order = self._transition(order, "FILLED", filled_qty=round(filled, 4), avg_fill=round(avg, 4))
+        order["fill_ts"] = time.time()
         for chunk, fill in fills:
             self.store.add_trade(order["symbol"], order["side"], chunk, round(fill, 4), order["id"])
         self._apply_position(order["symbol"], order["side"], filled, avg)

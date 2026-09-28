@@ -165,10 +165,12 @@ def main():
     print(f"{args.symbol}: {len(trades)} trades fetched")
 
     bars, levels, grid = build_footprint(trades, args.bar_seconds)
-    # keep only the last N bars for readability
+    # keep only the last N bars for readability — remap bar indices so grid stays valid
     if len(bars) > args.bars:
         keep = set(bars[-args.bars:])
+        bar_remap = {b: i for i, b in enumerate(bars[-args.bars:])}
         grid = {k: v for k, v in grid.items() if bars[k[0]] in keep}
+        grid = {(bar_remap[bars[k[0]]], k[1]): v for k, v in grid.items()}
         bars = bars[-args.bars:]
 
     render_footprint(bars, levels, grid, args.symbol, args.bar_seconds, args.out)

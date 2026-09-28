@@ -91,6 +91,8 @@ def make_gif(symbol, n_bars, bar_seconds, out_path, fps=2):
         levels = levels[lo:]
         grid = {(bi, li - lo): v for (bi, li), v in grid.items() if li >= lo}
 
+    # grid keys are bar INDICES (0..n-1) — no remap needed; bars are already contiguous
+
     t0 = bars[0]
     total_delta = []
     run = 0

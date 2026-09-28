@@ -76,6 +76,9 @@ def main():
     plt.savefig(f"{args.out}/heatmap_{args.strategy}.png", dpi=120)
 
     # best cell
+    if np.isnan(grid).all():
+        print("no valid param combos produced results — check data/params")
+        return
     best_idx = np.unravel_index(np.nanargmax(grid), grid.shape)
     best = grid[best_idx]
     print(f"best {args.strategy}: {y_name}={y_vals[best_idx[0]]}, {x_name}={x_vals[best_idx[1]]} "

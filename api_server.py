@@ -82,7 +82,7 @@ def _portfolio(cfg: dict) -> dict:
     for ts in all_ts:
         eq = sum(c.get(ts, 0) for c in curves)
         combined.append({"t": ts, "equity": round(eq, 2)})
-    cm = compute_metrics([(ts, eq) for ts, eq in [(p["t"], p["equity"]) for p in combined]], [], cfg.get("capital", 10_000.0))
+    cm = compute_metrics([(p["t"], p["equity"]) for p in combined], [], cfg.get("capital", 10_000.0))
     return {
         "symbols": symbols,
         "per_symbol": results,
@@ -116,6 +116,18 @@ def _orderflow(cfg: dict) -> dict:
         from footprint import fetch_trades, build_footprint
         trades = fetch_trades(symbol, limit=2000)
         bars, levels, grid = build_footprint(trades, bar_seconds=bar_seconds)
+        if not bars or not levels:
+            raise ValueError("no footprint data")
+        # grid is {(bar_idx, level_idx): (buy_vol, sell_vol)} — convert to matrices
+        n_bars, n_levels = len(bars), len(levels)
+        buy = np.zeros((n_bars, n_levels))
+        sell = np.zeros((n_bars, n_levels))
+        for (bi, li), (bv, sv) in grid.items():
+            if 0 <= bi < n_bars and 0 <= li < n_levels:
+                buy[bi, li] = bv
+                sell[bi, li] = sv
+        buy = buy.tolist()
+        sell = sell.tolist()
     except Exception:
         # deterministic synthetic fallback so the UI always has data
         rng = np.random.default_rng(42)
@@ -123,21 +135,19 @@ def _orderflow(cfg: dict) -> dict:
         base = 100.0
         levels = [round(base + i * 0.5, 2) for i in range(n_levels)]
         bars = [i for i in range(n_bars)]
-        grid = {
-            "buy": rng.integers(0, 500, (n_bars, n_levels)).tolist(),
-            "sell": rng.integers(0, 500, (n_bars, n_levels)).tolist(),
-        }
-    buy = np.array(grid["buy"], dtype=float)
-    sell = np.array(grid["sell"], dtype=float)
-    delta = (buy - sell).sum(axis=1)
+        buy = rng.integers(0, 500, (n_bars, n_levels)).tolist()
+        sell = rng.integers(0, 500, (n_bars, n_levels)).tolist()
+    buy_arr = np.array(buy, dtype=float)
+    sell_arr = np.array(sell, dtype=float)
+    delta = (buy_arr - sell_arr).sum(axis=1)
     cum_delta = np.cumsum(delta)
-    vol_profile = (buy + sell).sum(axis=0)
+    vol_profile = (buy_arr + sell_arr).sum(axis=0)
     return {
         "symbol": symbol,
         "bar_seconds": bar_seconds,
         "bars": [str(b) if not isinstance(b, (int, float)) else b for b in bars],
         "levels": levels,
-        "buy": grid["buy"], "sell": grid["sell"],
+        "buy": buy, "sell": sell,
         "cum_delta": [round(float(x), 2) for x in cum_delta],
         "vol_profile": [round(float(x), 2) for x in vol_profile],
         "connected": True,

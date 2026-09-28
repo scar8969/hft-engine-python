@@ -62,6 +62,9 @@ def save_outputs(args, symbol, orders, out_prefix=""):
 def plot_equity(args, orders, symbol, out_prefix=""):
     times = [ts for ts, _ in orders.equity_curve]
     eq = [e for _, e in orders.equity_curve]
+    if not eq:
+        print(f"no equity curve for {symbol} — nothing to plot")
+        return
     bh = [args.capital * e / eq[0] for e in eq]  # buy & hold benchmark
 
     plt.figure(figsize=(10, 5))
@@ -132,6 +135,9 @@ def main():
         plt.figure(figsize=(10, 5))
         times = [ts for ts, _ in combined_curve]
         eq = [e for _, e in combined_curve]
+        if not eq:
+            print("no combined equity curve — nothing to plot")
+            return
         bh = [args.capital * e / eq[0] for e in eq]
         plt.plot(times, eq, label=f"portfolio ({args.strategy})", linewidth=1.8)
         plt.plot(times, bh, label="buy & hold", linestyle="--", alpha=0.6)

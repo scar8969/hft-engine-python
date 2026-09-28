@@ -93,7 +93,7 @@ class OrderFlowFeed:
             if data["e"] == "trade":
                 price = float(data["p"])
                 qty = float(data["q"])
-                side = "buy" if data.get("m") is False else "sell"  # m=False -> taker buy
+                side = "buy" if not data.get("m") else "sell"  # m=False -> taker buy
                 ts = data["T"] / 1000.0
                 self.on_trade(price, qty, side, ts)
                 self._last_trade = (price, qty, side, ts)

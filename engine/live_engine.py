@@ -8,6 +8,7 @@ Runs as a background asyncio task; exposes start/stop/flatten/kill for the API.
 from __future__ import annotations
 
 import asyncio
+import json
 import time
 from datetime import datetime, timezone
 
@@ -75,7 +76,7 @@ class LiveEngine:
         # throttle SQLite journaling: journal on first tick, then every 10th
         self._tick_count += 1
         if self._tick_count == 1 or self._tick_count % 10 == 0:
-            self.store.set_meta("last_bar", json_dumps({"price": tick["price"], "ts": tick["ts"]}))
+            self.store.set_meta("last_bar", json.dumps({"price": tick["price"], "ts": tick["ts"]}))
             pos = self.store.get_position(self.symbol)
             qty = pos["qty"] if pos else 0.0
             cash = float(self.store.get_meta("cash", "100000"))
@@ -100,7 +101,6 @@ class LiveEngine:
         # latency: broker returns real ack/fill timestamps from the lifecycle
         self.latency.record(self._last_signal_ts, bro.get("ack_ts"), bro.get("fill_ts"),
                             (time.time() - self.gateway.last_tick_ts) if self.gateway.last_tick_ts else None)
-
     # ── lifecycle ───────────────────────────────────────────────────
     async def start(self):
         if self._running:
@@ -160,8 +160,3 @@ class LiveEngine:
             "position": self.store.get_position(self.symbol),
             "cash": self.store.get_meta("cash", "100000"),
         }
-
-
-def json_dumps(obj) -> str:
-    import json
-    return json.dumps(obj)

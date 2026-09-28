@@ -138,7 +138,9 @@ def _run_footprint_tab():
             bars, levels, grid = build_footprint(trades, bar_seconds=fsecs)
             if len(bars) > fbars:
                 keep = set(bars[-fbars:])
+                bar_remap = {b: i for i, b in enumerate(bars[-fbars:])}
                 grid = {k: v for k, v in grid.items() if bars[k[0]] in keep}
+                grid = {(bar_remap[bars[k[0]]], k[1]): v for k, v in grid.items()}
                 bars = bars[-fbars:]
             out = os.path.join(tempfile.gettempdir(), "footprint_live.png")
             render_footprint(bars, levels, grid, fsym, fsecs, out)
