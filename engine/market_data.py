@@ -12,6 +12,7 @@ class MarketDataHandler:
         self.symbol = symbol
         self.start = start
         self.end = end
+        self.last_bar: MarketData | None = None
         self.on_market_data: Callable[[MarketData], None] = lambda md: None
 
     def connect(self) -> List[MarketData]:
@@ -42,4 +43,5 @@ class MarketDataHandler:
 
     def process(self, bar: MarketData):
         """Emit one bar to subscribers (event wiring)."""
+        self.last_bar = bar
         self.on_market_data(bar)

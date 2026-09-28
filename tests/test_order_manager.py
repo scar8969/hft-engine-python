@@ -150,6 +150,27 @@ class TestStopLossTakeProfit:
         assert om.trades[0].exit_reason == "signal"
 
 
+class TestIntrabarFills:
+    def test_buy_fills_at_open_when_open_below_close(self):
+        om = OrderManager(initial_capital=10_000.0)
+        # bar: open 98, high 105, low 97, close 104 — BUY fills at open (98)
+        om.place_order(make_order(price=104.0, volume=10), bar_close=104.0,
+                       bar_open=98.0, bar_high=105.0, bar_low=97.0)
+        assert om.avg_entry == pytest.approx(98.0)
+
+    def test_sell_fills_at_open_when_open_above_close(self):
+        om = OrderManager(initial_capital=10_000.0)
+        # bar: open 106, high 108, low 105, close 102 — SELL fills at open (106)
+        om.place_order(make_order(side=OrderSide.SELL, price=102.0, volume=10),
+                       bar_close=102.0, bar_open=106.0, bar_high=108.0, bar_low=105.0)
+        assert om.avg_entry == pytest.approx(106.0)
+
+    def test_no_ohlc_keeps_close_fill(self):
+        om = OrderManager(initial_capital=10_000.0)
+        om.place_order(make_order(price=100.0, volume=10), bar_close=100.0)
+        assert om.avg_entry == pytest.approx(100.0)
+
+
 class TestEquity:
     def test_mark_to_market_includes_unrealized(self):
         om = OrderManager(initial_capital=10_000.0)

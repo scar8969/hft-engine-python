@@ -27,7 +27,12 @@ class HFTEngine:
 
     def _on_signal(self, order: Order):
         if self.risk.validate(order, self.orders.position, cash=self.orders.cash):
-            self.orders.place_order(order, order.price)
+            bar = self.market_data.last_bar
+            if bar is not None:
+                self.orders.place_order(order, bar.close,
+                                        bar_open=bar.open, bar_high=bar.high, bar_low=bar.low)
+            else:
+                self.orders.place_order(order, order.price)
 
     def run(self):
         bars = self.market_data.connect()

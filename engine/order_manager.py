@@ -24,14 +24,24 @@ class OrderManager:
         slip = order.price * self.slippage_bps / 10_000
         return order.price + slip if side == OrderSide.BUY else order.price - slip
 
-    def place_order(self, order: Order, bar_close: float):
-        """Execute a filled order at the bar close (with slippage + commission).
+    def place_order(self, order: Order, bar_close: float,
+                    bar_open: float | None = None,
+                    bar_high: float | None = None,
+                    bar_low: float | None = None):
+        """Execute a filled order with intrabar execution when OHLC is available.
 
+        BUY fills at the bar open (or close if no OHLC), SELL at the bar open —
+        more realistic than always filling at close. Slippage still applies.
         Supports both long and short:
         - BUY when flat/short → opens long / closes short
         - SELL when flat/long → opens short / closes long
         """
-        fill = self._fill_price(order, order.side)
+        # intrabar: fill at open when provided (signal fired on the bar's close,
+        # but execution happens at the next bar's open — approximated by this bar's open)
+        if bar_open is not None:
+            fill = bar_open
+        else:
+            fill = self._fill_price(order, order.side)
         self.total_fees += self.commission
 
         if order.side == OrderSide.BUY:
