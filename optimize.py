@@ -39,7 +39,17 @@ def run_window(symbol, df, start_idx, end_idx, strategy, params, capital, commis
         mom_period=params.get("mom_period", 50),
         initial_capital=capital, commission=commission, slippage_bps=slippage,
     )
-    orders = engine.run()
+    # feed the window's bars directly (no network re-download)
+    for ts, row in window.iterrows():
+        from engine.models import MarketData
+        engine.market_data.process(MarketData(
+            symbol=symbol, timestamp=ts.to_pydatetime(),
+            open=float(row["Open"]), high=float(row["High"]),
+            low=float(row["Low"]), close=float(row["Close"]),
+            volume=float(row.get("Volume", 0.0)),
+        ))
+    engine.orders.finalize(window["Close"].iloc[-1], symbol)
+    orders = engine.orders
 
     # slice equity curve + trades to the actual window (drop warmup bars)
     win_start = df.index[start_idx]
@@ -72,6 +82,7 @@ def main():
     ap.add_argument("--capital", type=float, default=10_000.0)
     ap.add_argument("--commission", type=float, default=1.0)
     ap.add_argument("--slippage", type=float, default=5.0)
+    ap.add_argument("--workers", type=int, default=1, help="parallel workers for the param sweep (0 = auto)")
     args = ap.parse_args()
 
     df = load_bars(args.symbol, args.start, args.end)
@@ -91,13 +102,26 @@ def main():
         train_end = start + args.train_days
         test_end = train_end + args.test_days
 
-        # pick best params on train
+        # pick best params on train (parallel sweep when workers > 1)
         best, best_m = None, None
-        for params in grid:
-            m = run_window(args.symbol, df, start, train_end, args.strategy, params,
-                           args.capital, args.commission, args.slippage)
-            if m and (best_m is None or m["total_return_pct"] > best_m["total_return_pct"]):
-                best, best_m = params, m
+        if args.workers != 1:
+            from concurrent.futures import ProcessPoolExecutor
+            workers = args.workers or None
+            with ProcessPoolExecutor(max_workers=workers) as ex:
+                futures = {ex.submit(run_window, args.symbol, df, start, train_end,
+                                     args.strategy, p, args.capital, args.commission,
+                                     args.slippage): p for p in grid}
+                for fut in futures:
+                    m = fut.result()
+                    p = futures[fut]
+                    if m and (best_m is None or m["total_return_pct"] > best_m["total_return_pct"]):
+                        best, best_m = p, m
+        else:
+            for params in grid:
+                m = run_window(args.symbol, df, start, train_end, args.strategy, params,
+                               args.capital, args.commission, args.slippage)
+                if m and (best_m is None or m["total_return_pct"] > best_m["total_return_pct"]):
+                    best, best_m = params, m
 
         # validate best on test (out-of-sample)
         test_m = run_window(args.symbol, df, train_end, test_end, args.strategy, best,
