@@ -145,20 +145,24 @@ class OrderRouter:
         )
         resp = self._alpaca.submit_order(req)
         order = self._transition(order, "ACK", id=resp.id)
-        # poll once for fill (paper fills fast)
-        for _ in range(10):
+        # poll until a terminal state (up to 30s); paper fills are fast but
+        # live orders can sit in queue — never return ACK as if it were final
+        terminal = {"filled", "partially_filled", "rejected", "canceled", "expired"}
+        for _ in range(150):  # 150 x 0.2s = 30s
             time.sleep(0.2)
             status = self._alpaca.get_order_by_id(resp.id)
-            if status.status in ("filled", "partially_filled"):
-                filled = float(status.filled_qty)
-                avg = float(status.filled_avg_price)
-                order = self._transition(order, "FILLED", filled_qty=filled, avg_fill=avg)
-                self.store.add_trade(order["symbol"], order["side"], filled, avg, order["id"])
-                self._apply_position(order["symbol"], order["side"], filled, avg)
+            if status.status in terminal:
+                if status.status in ("filled", "partially_filled"):
+                    filled = float(status.filled_qty)
+                    avg = float(status.filled_avg_price)
+                    order = self._transition(order, "FILLED", filled_qty=filled, avg_fill=avg)
+                    order["fill_ts"] = time.time()
+                    self.store.add_trade(order["symbol"], order["side"], filled, avg, order["id"])
+                    self._apply_position(order["symbol"], order["side"], filled, avg)
+                else:
+                    order = self._transition(order, "REJECTED", reason=status.status)
                 return order
-            if status.status in ("rejected", "canceled", "expired"):
-                return self._transition(order, "REJECTED", reason=status.status)
-        return self._transition(order, "ACK")  # still working
+        return self._transition(order, "REJECTED", reason="timeout")
 
     # ── position + cash tracking ────────────────────────────────────
     def _apply_position(self, symbol: str, side: str, qty: float, price: float):

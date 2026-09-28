@@ -170,3 +170,69 @@ class TestAutoKill:
         eng._check_drawdown(105_000.0)  # new high -> peak updates
         assert eng._peak_equity == 105_000.0
         assert store.kill_switch() is False
+
+
+# ── Alpaca poll to terminal state ──────────────────────────────────
+class TestAlpacaPoll:
+    def _make_router(self, store, monkeypatch):
+        monkeypatch.setenv("ALPACA_API_KEY", "test-key")
+        monkeypatch.setenv("ALPACA_SECRET_KEY", "test-secret")
+        from engine.broker import OrderRouter
+        return OrderRouter(store, backend="alpaca")
+
+    def test_polls_until_filled(self, store, monkeypatch):
+        from engine.broker import OrderRouter
+        router = self._make_router(store, monkeypatch)
+
+        class FakeResp:
+            id = "alpaca-1"
+
+        class FakeStatus:
+            status = "new"
+            filled_qty = "0"
+            filled_avg_price = None
+
+        calls = {"n": 0}
+
+        class FakeAlpaca:
+            def submit_order(self, req):
+                return FakeResp()
+
+            def get_order_by_id(self, oid):
+                calls["n"] += 1
+                if calls["n"] >= 3:  # 3rd poll -> filled
+                    s = FakeStatus()
+                    s.status = "filled"
+                    s.filled_qty = "10"
+                    s.filled_avg_price = "100.5"
+                    return s
+                return FakeStatus()
+
+        router._alpaca = FakeAlpaca()  # noqa: SLF001
+        router.fill_latency_ms = 0
+        o = router.submit("AAPL", "BUY", 10, 100.0)
+        assert o["status"] == "FILLED"
+        assert o["filled_qty"] == 10
+        assert o["avg_fill"] == 100.5
+        assert calls["n"] >= 3  # polled until terminal
+
+    def test_rejected_returns_rejected(self, store, monkeypatch):
+        router = self._make_router(store, monkeypatch)
+
+        class FakeResp:
+            id = "alpaca-2"
+
+        class FakeAlpaca:
+            def submit_order(self, req):
+                return FakeResp()
+
+            def get_order_by_id(self, oid):
+                s = type("S", (), {"status": "rejected", "filled_qty": "0",
+                                   "filled_avg_price": None})()
+                return s
+
+        router._alpaca = FakeAlpaca()  # noqa: SLF001
+        router.fill_latency_ms = 0
+        o = router.submit("AAPL", "BUY", 10, 100.0)
+        assert o["status"] == "REJECTED"
+        assert o["reason"] == "rejected"
