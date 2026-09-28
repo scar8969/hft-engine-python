@@ -1,0 +1,34 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "hft-engine"
+version = "0.3.0"
+description = "Event-driven backtesting + live trading engine: market data -> strategy -> risk -> order manager"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Priyanshu Rout" }]
+dependencies = [
+    "numpy",
+    "pandas",
+    "yfinance",
+    "matplotlib",
+    "websockets",
+]
+
+[project.optional-dependencies]
+portfolio = ["skfolio"]
+live = ["alpaca-py"]
+dev = ["pytest"]
+
+[project.scripts]
+hft-engine = "main:main"
+hft-live = "live_engine:cli"
+
+[tool.hatch.build.targets.wheel]
+packages = ["engine"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

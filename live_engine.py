@@ -56,8 +56,14 @@ async def main():
         store.close()
 
 
-if __name__ == "__main__":
+def cli():
+    """Console-script entry point (wraps the async main)."""
+    import asyncio
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
         pass
+
+
+if __name__ == "__main__":
+    cli()
