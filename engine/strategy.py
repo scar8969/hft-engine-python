@@ -126,5 +126,7 @@ class StrategyEngine:
             volume=self.qty,
             timestamp=data.timestamp,
         )
+        # strategy-level position tracking (long-only semantics for signal gating);
+        # the OrderManager handles short opening/closing at fill time
         self._in_position = (side == OrderSide.BUY)
         self.on_signal(order)

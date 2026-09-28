@@ -36,5 +36,12 @@ class RiskManager:
             self.rejected.append(order)
             return False
 
+        # shorts: only when SELL would OPEN a short (position <= 0), cap |position| + volume
+        if order.side.value == "SELL" and current_position <= 0 and abs(current_position) + order.volume > self.max_position:
+            order.status = OrderStatus.REJECTED
+            order.reason = f"short position {current_position} + {order.volume} > max {self.max_position}"
+            self.rejected.append(order)
+            return False
+
         order.status = OrderStatus.FILLED
         return True
