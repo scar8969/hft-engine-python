@@ -3,3 +3,4 @@ __pycache__/
 *.png
 *.csv
 .venv/
+*.db
