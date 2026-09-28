@@ -8,7 +8,9 @@ class StrategyEngine:
     def __init__(self, strategy: str = "sma", fast: int = 20, slow: int = 50,
                  threshold: float = 100.0, rsi_period: int = 14,
                  oversold: float = 30.0, overbought: float = 70.0,
-                 mom_period: int = 50):
+                 mom_period: int = 50, qty: int = 10):
+        if qty <= 0:
+            raise ValueError(f"qty must be positive, got {qty}")
         self.strategy = strategy
         self.fast = fast
         self.slow = slow
@@ -17,6 +19,7 @@ class StrategyEngine:
         self.oversold = oversold
         self.overbought = overbought
         self.mom_period = mom_period
+        self.qty = qty
         self.on_signal: Callable[[Order], None] = lambda o: None
 
         self._closes: List[float] = []
@@ -120,7 +123,7 @@ class StrategyEngine:
             symbol=data.symbol,
             side=side,
             price=data.close,
-            volume=10,  # fixed size, like the original
+            volume=self.qty,
             timestamp=data.timestamp,
         )
         self._in_position = (side == OrderSide.BUY)

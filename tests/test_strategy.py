@@ -78,6 +78,24 @@ class TestMomentum:
         assert sig.orders == []
 
 
+class TestSizing:
+    def test_default_qty_is_10(self):
+        eng = StrategyEngine(strategy="threshold", threshold=100.0)
+        sig = SignalCollector(eng)
+        feed(eng, [90, 110])
+        assert sig.volumes == [10, 10]
+
+    def test_custom_qty_used_in_orders(self):
+        eng = StrategyEngine(strategy="threshold", threshold=100.0, qty=25)
+        sig = SignalCollector(eng)
+        feed(eng, [90, 110])
+        assert sig.volumes == [25, 25]
+
+    def test_qty_zero_disallowed(self):
+        with pytest.raises(ValueError, match="qty"):
+            StrategyEngine(strategy="sma", qty=0)
+
+
 class TestUnknownStrategy:
     def test_raises_value_error(self):
         eng = StrategyEngine(strategy="moonshot")

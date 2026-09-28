@@ -34,6 +34,10 @@ class SignalCollector:
     def prices(self):
         return [o.price for o in self.orders]
 
+    @property
+    def volumes(self):
+        return [o.volume for o in self.orders]
+
 
 def feed(engine, closes):
     for i, c in enumerate(closes):

@@ -35,7 +35,7 @@ class LiveEngine:
         self.max_exposure = max_exposure
 
         self.strategy = StrategyEngine(strategy, fast, slow, threshold,
-                                       rsi_period, oversold, overbought, mom_period)
+                                       rsi_period, oversold, overbought, mom_period, qty=qty)
         self.broker = OrderRouter(store, backend=backend)
         self.latency = LatencyTracker()
         self.gateway = MarketGateway(symbol, backend=gateway_backend, on_tick=self._on_tick)
