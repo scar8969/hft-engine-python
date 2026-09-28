@@ -99,6 +99,57 @@ class TestShorts:
         assert om.equity_curve[-1] == ("t1", pytest.approx(10100.0))
 
 
+class TestStopLossTakeProfit:
+    def test_stop_loss_triggers_exit(self):
+        om = OrderManager(initial_capital=10_000.0)
+        order = make_order(price=100.0, volume=10)
+        order.stop_loss = 0.05  # 5% below entry = 95
+        om.place_order(order, bar_close=100.0)
+        om.mark_to_market("t1", close=94.0)  # breaches 95
+        assert len(om.trades) == 1
+        assert om.trades[0].exit_reason == "stop_loss"
+        assert om.trades[0].exit_price == pytest.approx(95.0)  # filled at stop level
+        assert om.position == 0
+
+    def test_take_profit_triggers_exit(self):
+        om = OrderManager(initial_capital=10_000.0)
+        order = make_order(price=100.0, volume=10)
+        order.take_profit = 0.10  # 10% above entry = 110
+        om.place_order(order, bar_close=100.0)
+        om.mark_to_market("t1", close=111.0)  # breaches 110
+        assert len(om.trades) == 1
+        assert om.trades[0].exit_reason == "take_profit"
+        assert om.trades[0].exit_price == pytest.approx(110.0)
+        assert om.position == 0
+
+    def test_no_exit_within_bands(self):
+        om = OrderManager(initial_capital=10_000.0)
+        order = make_order(price=100.0, volume=10)
+        order.stop_loss = 0.05
+        order.take_profit = 0.10
+        om.place_order(order, bar_close=100.0)
+        om.mark_to_market("t1", close=102.0)  # inside bands
+        assert om.trades == []
+        assert om.position == 10
+
+    def test_stop_loss_on_short(self):
+        om = OrderManager(initial_capital=10_000.0)
+        order = make_order(side=OrderSide.SELL, price=100.0, volume=10)
+        order.stop_loss = 0.05  # short stops 5% ABOVE entry = 105
+        om.place_order(order, bar_close=100.0)
+        om.mark_to_market("t1", close=106.0)
+        assert len(om.trades) == 1
+        assert om.trades[0].exit_reason == "stop_loss"
+        assert om.position == 0
+
+    def test_signal_exit_still_works(self):
+        om = OrderManager(initial_capital=10_000.0)
+        om.place_order(make_order(price=100.0, volume=10), bar_close=100.0)
+        om.place_order(make_order(side=OrderSide.SELL, price=110.0, volume=10),
+                       bar_close=110.0)
+        assert om.trades[0].exit_reason == "signal"
+
+
 class TestEquity:
     def test_mark_to_market_includes_unrealized(self):
         om = OrderManager(initial_capital=10_000.0)

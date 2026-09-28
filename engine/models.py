@@ -36,6 +36,8 @@ class Order:
     timestamp: datetime
     status: OrderStatus = OrderStatus.NEW
     reason: str = ""
+    stop_loss: float | None = None   # fractional, e.g. 0.05 = 5% below entry
+    take_profit: float | None = None  # fractional, e.g. 0.10 = 10% above entry
 
 
 @dataclass
@@ -49,3 +51,4 @@ class Trade:
     volume: int
     pnl: float
     pnl_pct: float
+    exit_reason: str = "signal"

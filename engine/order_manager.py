@@ -9,11 +9,12 @@ class OrderManager:
                  commission: float = 0.0, slippage_bps: float = 0.0):
         self.initial_capital = initial_capital
         self.cash = initial_capital
-        self.position = 0          # shares held
+        self.position = 0          # shares held (negative = short)
         self.avg_entry = 0.0       # avg cost of current position
         self.trades: List[Trade] = []
         self.equity_curve: List[tuple] = []  # (timestamp, equity)
-        self._open_entry: Optional[tuple] = None  # (time, price, volume, symbol)
+        # (time, price, volume, symbol, stop_loss, take_profit)
+        self._open_entry: Optional[tuple] = None
         self.commission = commission          # $ per order
         self.slippage_bps = slippage_bps      # basis points of adverse slippage
         self.total_fees = 0.0
@@ -38,7 +39,7 @@ class OrderManager:
                 # closing a short: buy back at fill, PnL = (entry - fill) * vol
                 self.cash -= fill * order.volume + self.commission
                 self.position += order.volume
-                entry_t, entry_p, vol, sym = self._open_entry
+                entry_t, entry_p, vol, sym, _, _ = self._open_entry
                 pnl = (entry_p - fill) * order.volume - self.commission
                 pnl_pct = (entry_p / fill - 1) * 100
                 self.trades.append(Trade(
@@ -56,14 +57,15 @@ class OrderManager:
             self.position += order.volume
             self.avg_entry = ((self.avg_entry * (self.position - order.volume)) + fill * order.volume) / self.position
             if self._open_entry is None:
-                self._open_entry = (order.timestamp, fill, order.volume, order.symbol)
+                self._open_entry = (order.timestamp, fill, order.volume, order.symbol,
+                                    order.stop_loss, order.take_profit)
         else:  # SELL
             if self.position > 0:
                 # closing a long
                 proceeds = fill * order.volume - self.commission
                 self.cash += proceeds
                 self.position -= order.volume
-                entry_t, entry_p, vol, sym = self._open_entry
+                entry_t, entry_p, vol, sym, _, _ = self._open_entry
                 pnl = (fill - entry_p) * order.volume - self.commission
                 pnl_pct = (fill / entry_p - 1) * 100
                 self.trades.append(Trade(
@@ -80,16 +82,52 @@ class OrderManager:
             self.cash += proceeds
             self.position -= order.volume
             self.avg_entry = fill
-            self._open_entry = (order.timestamp, fill, order.volume, order.symbol)
+            self._open_entry = (order.timestamp, fill, order.volume, order.symbol,
+                                order.stop_loss, order.take_profit)
 
     def mark_to_market(self, timestamp, close: float):
         equity = self.cash + self.position * close
         self.equity_curve.append((timestamp, equity))
+        # check stop-loss / take-profit on the open position
+        if self._open_entry is not None and self.position != 0:
+            entry_t, entry_p, vol, sym, sl, tp = self._open_entry
+            if self.position > 0:  # long
+                if sl and close <= entry_p * (1 - sl):
+                    self._force_close(timestamp, entry_p * (1 - sl), "stop_loss")
+                elif tp and close >= entry_p * (1 + tp):
+                    self._force_close(timestamp, entry_p * (1 + tp), "take_profit")
+            else:  # short
+                if sl and close >= entry_p * (1 + sl):
+                    self._force_close(timestamp, entry_p * (1 + sl), "stop_loss")
+                elif tp and close <= entry_p * (1 - tp):
+                    self._force_close(timestamp, entry_p * (1 - tp), "take_profit")
+
+    def _force_close(self, timestamp, exit_price: float, reason: str):
+        """Close the open position at exit_price (used by SL/TP)."""
+        entry_t, entry_p, vol, sym, _, _ = self._open_entry
+        if self.position > 0:
+            pnl = (exit_price - entry_p) * vol - self.commission
+            pnl_pct = (exit_price / entry_p - 1) * 100
+            self.cash += exit_price * vol - self.commission
+            self.position = 0
+        else:
+            pnl = (entry_p - exit_price) * vol - self.commission
+            pnl_pct = (entry_p / exit_price - 1) * 100
+            self.cash -= exit_price * vol + self.commission
+            self.position = 0
+        self.total_fees += self.commission
+        self.trades.append(Trade(
+            symbol=sym, entry_time=entry_t, entry_price=entry_p,
+            exit_time=timestamp, exit_price=exit_price, volume=vol,
+            pnl=pnl, pnl_pct=pnl_pct, exit_reason=reason,
+        ))
+        self._open_entry = None
+        self.avg_entry = 0.0
 
     def finalize(self, last_close: float, symbol: str | None = None):
         """Close any open position at the last price so metrics are clean."""
         if self.position != 0 and self._open_entry:
-            entry_t, entry_p, vol, sym = self._open_entry
+            entry_t, entry_p, vol, sym, _, _ = self._open_entry
             if self.position > 0:
                 pnl = (last_close - entry_p) * vol - self.commission
                 pnl_pct = (last_close / entry_p - 1) * 100
