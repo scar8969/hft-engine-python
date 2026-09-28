@@ -10,9 +10,19 @@ class RiskManager:
         self.max_position = max_position
         self.rejected: List[Order] = []
 
-    def validate(self, order: Order, current_position: int) -> bool:
-        """Reject if order value exceeds max exposure or position cap."""
+    def validate(self, order: Order, current_position: int, cash: float | None = None) -> bool:
+        """Reject if order value exceeds max exposure, position cap, or available cash.
+
+        cash=None skips the cash check (backward compat). Only BUY orders are
+        cash-constrained — selling frees cash.
+        """
         order_value = order.price * order.volume
+
+        if cash is not None and order.side.value == "BUY" and order_value > cash:
+            order.status = OrderStatus.REJECTED
+            order.reason = f"order value {order_value:.2f} > cash {cash:.2f}"
+            self.rejected.append(order)
+            return False
 
         if order_value > self.max_exposure:
             order.status = OrderStatus.REJECTED

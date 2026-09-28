@@ -41,6 +41,33 @@ class TestPositionCap:
         assert order.status == OrderStatus.FILLED
 
 
+class TestCashSufficiency:
+    def test_rejects_buy_exceeding_cash(self):
+        rm = RiskManager(max_exposure=100_000.0)
+        order = make_order(side=OrderSide.BUY, price=100.0, volume=200)  # 20k > 10k
+        assert rm.validate(order, current_position=0, cash=10_000.0) is False
+        assert order.status == OrderStatus.REJECTED
+        assert "cash" in order.reason
+
+    def test_accepts_buy_within_cash(self):
+        rm = RiskManager(max_exposure=100_000.0)
+        order = make_order(side=OrderSide.BUY, price=100.0, volume=50)  # 5k < 10k
+        assert rm.validate(order, current_position=0, cash=10_000.0) is True
+        assert order.status == OrderStatus.FILLED
+
+    def test_sell_ignores_cash(self):
+        rm = RiskManager(max_exposure=100_000.0)
+        order = make_order(side=OrderSide.SELL, price=100.0, volume=200)
+        # selling doesn't need cash — only buys are cash-constrained
+        assert rm.validate(order, current_position=200, cash=0.0) is True
+
+    def test_no_cash_arg_keeps_old_behavior(self):
+        rm = RiskManager(max_exposure=1_000_000.0, max_position=1000)
+        order = make_order(side=OrderSide.BUY, price=100.0, volume=200)
+        # cash not passed → no cash check (backward compat)
+        assert rm.validate(order, current_position=0) is True
+
+
 class TestBoundary:
     def test_exposure_exactly_at_limit_passes(self):
         rm = RiskManager(max_exposure=1000.0)

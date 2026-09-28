@@ -25,7 +25,7 @@ class HFTEngine:
         self.strategy.on_signal = self._on_signal
 
     def _on_signal(self, order: Order):
-        if self.risk.validate(order, self.orders.position):
+        if self.risk.validate(order, self.orders.position, cash=self.orders.cash):
             self.orders.place_order(order, order.price)
 
     def run(self):
