@@ -15,7 +15,8 @@ class HFTEngine:
                  mom_period: int = 50, qty: int = 10):
         self.market_data = MarketDataHandler(symbol, start, end)
         self.strategy = StrategyEngine(strategy, fast, slow, threshold,
-                                       rsi_period, oversold, overbought, mom_period, qty=qty)
+                                       rsi_period, oversold, overbought, mom_period,
+                                       qty=qty, capital=initial_capital)
         self.risk = RiskManager()
         self.orders = OrderManager(initial_capital, commission, slippage_bps)
         self.symbol = symbol

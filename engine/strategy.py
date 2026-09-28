@@ -8,9 +8,10 @@ class StrategyEngine:
     def __init__(self, strategy: str = "sma", fast: int = 20, slow: int = 50,
                  threshold: float = 100.0, rsi_period: int = 14,
                  oversold: float = 30.0, overbought: float = 70.0,
-                 mom_period: int = 50, qty: int = 10):
-        if qty <= 0:
-            raise ValueError(f"qty must be positive, got {qty}")
+                 mom_period: int = 50, qty: int = 10, risk_pct: float = 0.01,
+                 capital: float = 10_000.0, atr_period: int = 14):
+        if qty < 0:
+            raise ValueError(f"qty must be >= 0 (0 = ATR auto-size), got {qty}")
         self.strategy = strategy
         self.fast = fast
         self.slow = slow
@@ -20,14 +21,21 @@ class StrategyEngine:
         self.overbought = overbought
         self.mom_period = mom_period
         self.qty = qty
+        self.risk_pct = risk_pct
+        self.capital = capital
+        self.atr_period = atr_period
         self.on_signal: Callable[[Order], None] = lambda o: None
 
         self._closes: List[float] = []
+        self._highs: List[float] = []
+        self._lows: List[float] = []
         self._in_position = False
 
     def on_market_data(self, data: MarketData):
         """Called by the engine on every bar. Emits BUY/SELL signals."""
         self._closes.append(data.close)
+        self._highs.append(data.high)
+        self._lows.append(data.low)
 
         if self.strategy == "sma":
             self._sma_logic(data)
@@ -92,6 +100,27 @@ class StrategyEngine:
 
     # --- indicators -----------------------------------------------------
 
+    def _atr(self, period: int | None = None) -> float | None:
+        """Average True Range over the last `period` bars (Wilder)."""
+        period = period or self.atr_period
+        if len(self._closes) < period + 1:
+            return None
+        trs = []
+        for i in range(-period, 0):
+            h, l, pc = self._highs[i], self._lows[i], self._closes[i - 1]
+            trs.append(max(h - l, abs(h - pc), abs(l - pc)))
+        return sum(trs) / len(trs)
+
+    def _size_position(self) -> int:
+        """Fixed qty if set, else ATR risk-targeted: risk_amount / ATR."""
+        if self.qty > 0:
+            return self.qty
+        atr = self._atr()
+        if atr is None or atr <= 0:
+            return 10  # fallback before ATR warms up
+        risk_amount = self.capital * self.risk_pct
+        return max(1, int(risk_amount / atr))
+
     def _rsi_wilder(self, offset: int = 0) -> float | None:
         """Wilder-smoothed RSI over closes, optionally excluding the last `offset` bars."""
         closes = self._closes
@@ -123,7 +152,7 @@ class StrategyEngine:
             symbol=data.symbol,
             side=side,
             price=data.close,
-            volume=self.qty,
+            volume=self._size_position(),
             timestamp=data.timestamp,
         )
         # strategy-level position tracking (long-only semantics for signal gating);

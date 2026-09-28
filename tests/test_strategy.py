@@ -91,9 +91,40 @@ class TestSizing:
         feed(eng, [90, 110])
         assert sig.volumes == [25, 25]
 
-    def test_qty_zero_disallowed(self):
+    def test_qty_zero_means_atr_auto_sizing(self):
+        eng = StrategyEngine(strategy="sma", qty=0, risk_pct=0.01)
+        assert eng.qty == 0  # auto-size flag
+        assert eng.risk_pct == 0.01
+
+    def test_qty_negative_disallowed(self):
         with pytest.raises(ValueError, match="qty"):
-            StrategyEngine(strategy="sma", qty=0)
+            StrategyEngine(strategy="sma", qty=-5)
+
+
+class TestATRSizing:
+    def test_high_atr_smaller_position(self):
+        # risk_pct=0.01 of 10k = $100 risk; ATR 5 → qty = 100/5 = 20
+        eng = StrategyEngine(strategy="sma", fast=2, slow=3, qty=0, risk_pct=0.01)
+        sig = SignalCollector(eng)
+        # high-volatility series (big swings → high ATR)
+        closes = [100, 105, 95, 110, 90, 115, 85]
+        feed(eng, closes)
+        assert sig.orders, "expected at least one signal"
+        # qty should be risk_amount / ATR, not fixed
+        assert all(o.volume > 0 for o in sig.orders)
+
+    def test_atr_sizing_formula(self):
+        eng = StrategyEngine(strategy="sma", fast=2, slow=3, qty=0, risk_pct=0.01)
+        # feed a known series, compute expected ATR manually
+        from conftest import make_bar
+        bars = [make_bar(c, i) for i, c in enumerate([100, 101, 99, 102, 98, 103])]
+        for b in bars:
+            eng.on_market_data(b)
+        atr = eng._atr(period=3)
+        assert atr is not None and atr > 0
+        # risk = capital * risk_pct; qty = risk / atr
+        expected_qty = int((10_000 * 0.01) / atr)
+        assert expected_qty > 0
 
 
 class TestUnknownStrategy:
