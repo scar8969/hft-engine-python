@@ -12,7 +12,6 @@ from engine.state import StateStore
 from engine.broker import OrderRouter
 from engine.latency import LatencyTracker
 
-
 @pytest.fixture
 def store(tmp_path):
     return StateStore(tmp_path / "test.db")
@@ -109,3 +108,35 @@ class TestLatency:
         assert s["signal_to_ack_ms"] == pytest.approx(1.0)
         assert s["ack_to_fill_ms"] == pytest.approx(4.5)  # (4 + 5) / 2
         assert s["total_ms"] == pytest.approx(5.5)  # (5 + 6) / 2
+
+
+# ── MultiSymbolEngine ───────────────────────────────────────────────
+class TestMultiSymbol:
+    def test_creates_per_symbol_engines(self, store):
+        from engine.multi_live import MultiSymbolEngine
+        m = MultiSymbolEngine(["AAPL", "MSFT"], store, backend="dryrun",
+                              strategy="threshold", threshold=100.0)
+        assert set(m.engines.keys()) == {"AAPL", "MSFT"}
+        for sym, eng in m.engines.items():
+            assert eng.symbol == sym
+            assert eng.store is store  # shared store
+
+    def test_status_returns_per_symbol(self, store):
+        from engine.multi_live import MultiSymbolEngine
+        m = MultiSymbolEngine(["AAPL", "MSFT"], store, backend="dryrun",
+                              strategy="threshold", threshold=100.0)
+        st = m.status()
+        assert "symbols" in st
+        assert set(st["symbols"]) == {"AAPL", "MSFT"}
+
+    def test_flatten_all_symbols(self, store):
+        from engine.multi_live import MultiSymbolEngine
+        m = MultiSymbolEngine(["AAPL", "MSFT"], store, backend="dryrun",
+                              strategy="threshold", threshold=100.0)
+        # open positions via each engine's broker
+        for sym in ("AAPL", "MSFT"):
+            m.engines[sym].broker.submit(sym, "BUY", 10, 100.0)
+        assert store.get_position("AAPL")["qty"] == 10
+        m.flatten_all()
+        assert store.get_position("AAPL")["qty"] == 0
+        assert store.get_position("MSFT")["qty"] == 0
