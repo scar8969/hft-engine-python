@@ -195,6 +195,8 @@ def _live(cfg: dict) -> dict:
             max_position=int(cfg.get("max_position", 100)),
             max_exposure=float(cfg.get("max_exposure", 100_000.0)),
             gateway_backend=cfg.get("gateway", "poll"),
+            max_drawdown_pct=float(cfg.get("max_drawdown_pct", 0.0)),
+            max_daily_loss_pct=float(cfg.get("max_daily_loss_pct", 0.0)),
         )
         _LIVE["engine"] = eng
         _LIVE["thread"] = threading.Thread(target=_live_loop, args=(eng,), daemon=True)

@@ -17,7 +17,8 @@ class MultiSymbolEngine:
                  oversold: float = 30.0, overbought: float = 70.0,
                  mom_period: int = 50, qty: int = 10,
                  max_position: int = 100, max_exposure: float = 100_000.0,
-                 gateway_backend: str = "poll"):
+                 gateway_backend: str = "poll",
+                 max_drawdown_pct: float = 0.0, max_daily_loss_pct: float = 0.0):
         self.symbols = [s.upper() for s in symbols]
         self.store = store
         self.backend = backend
@@ -30,6 +31,7 @@ class MultiSymbolEngine:
                 mom_period=mom_period, qty=qty,
                 max_position=max_position, max_exposure=max_exposure,
                 gateway_backend=gateway_backend,
+                max_drawdown_pct=max_drawdown_pct, max_daily_loss_pct=max_daily_loss_pct,
             )
 
     async def start(self):

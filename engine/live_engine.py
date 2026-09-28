@@ -27,12 +27,17 @@ class LiveEngine:
                  oversold: float = 30.0, overbought: float = 70.0,
                  mom_period: int = 50, qty: int = 10,
                  max_position: int = 100, max_exposure: float = 100_000.0,
-                 gateway_backend: str = "poll"):
+                 gateway_backend: str = "poll",
+                 max_drawdown_pct: float = 0.0, max_daily_loss_pct: float = 0.0):
         self.symbol = symbol.upper()
         self.store = store
         self.qty = qty
         self.max_position = max_position
         self.max_exposure = max_exposure
+        self.max_drawdown_pct = max_drawdown_pct
+        self.max_daily_loss_pct = max_daily_loss_pct
+        self._peak_equity = 0.0
+        self._day_start_equity = 0.0
 
         self.strategy = StrategyEngine(strategy, fast, slow, threshold,
                                        rsi_period, oversold, overbought, mom_period, qty=qty)
@@ -64,6 +69,29 @@ class LiveEngine:
         except Exception as e:
             print(f"[live] warmup skipped ({e})")
 
+    # ── risk: auto-kill on drawdown / daily loss ────────────────────
+    def _check_drawdown(self, equity: float):
+        """Engage the kill switch if equity breaches max drawdown or daily loss."""
+        if self.store.kill_switch():
+            return
+        if self._peak_equity <= 0:
+            self._peak_equity = equity
+            self._day_start_equity = equity
+            return
+        if equity > self._peak_equity:
+            self._peak_equity = equity
+        if self.max_drawdown_pct > 0:
+            dd = (self._peak_equity - equity) / self._peak_equity * 100
+            if dd >= self.max_drawdown_pct:
+                print(f"[live] AUTO-KILL: drawdown {dd:.1f}% >= {self.max_drawdown_pct:.1f}%")
+                self.kill()
+                return
+        if self.max_daily_loss_pct > 0 and self._day_start_equity > 0:
+            day_loss = (self._day_start_equity - equity) / self._day_start_equity * 100
+            if day_loss >= self.max_daily_loss_pct:
+                print(f"[live] AUTO-KILL: daily loss {day_loss:.1f}% >= {self.max_daily_loss_pct:.1f}%")
+                self.kill()
+
     # ── tick handler ────────────────────────────────────────────────
     def _on_tick(self, tick: dict):
         self._last_price = tick["price"]
@@ -80,7 +108,9 @@ class LiveEngine:
             pos = self.store.get_position(self.symbol)
             qty = pos["qty"] if pos else 0.0
             cash = float(self.store.get_meta("cash", "100000"))
-            self.store.append_equity(round(cash + qty * tick["price"], 2))
+            equity = round(cash + qty * tick["price"], 2)
+            self.store.append_equity(equity)
+            self._check_drawdown(equity)
 
     # ── signal → risk → broker ──────────────────────────────────────
     def _on_signal(self, order: Order):

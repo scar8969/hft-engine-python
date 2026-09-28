@@ -140,3 +140,33 @@ class TestMultiSymbol:
         m.flatten_all()
         assert store.get_position("AAPL")["qty"] == 0
         assert store.get_position("MSFT")["qty"] == 0
+
+
+# ── Auto-kill on drawdown ───────────────────────────────────────────
+class TestAutoKill:
+    def test_kill_on_drawdown_breach(self, store):
+        from engine.live_engine import LiveEngine
+        eng = LiveEngine("AAPL", store, backend="dryrun", strategy="threshold",
+                         threshold=100.0, max_drawdown_pct=10.0)
+        # simulate: equity starts 100k, drops 15% -> breach
+        eng._peak_equity = 100_000.0
+        eng._check_drawdown(85_000.0)
+        assert store.kill_switch() is True
+        assert store.get_meta("engine_state") == "killed"
+
+    def test_no_kill_within_limit(self, store):
+        from engine.live_engine import LiveEngine
+        eng = LiveEngine("AAPL", store, backend="dryrun", strategy="threshold",
+                         threshold=100.0, max_drawdown_pct=10.0)
+        eng._peak_equity = 100_000.0
+        eng._check_drawdown(95_000.0)  # -5% < 10%
+        assert store.kill_switch() is False
+
+    def test_peak_equity_tracks_highs(self, store):
+        from engine.live_engine import LiveEngine
+        eng = LiveEngine("AAPL", store, backend="dryrun", strategy="threshold",
+                         threshold=100.0, max_drawdown_pct=10.0)
+        eng._peak_equity = 100_000.0
+        eng._check_drawdown(105_000.0)  # new high -> peak updates
+        assert eng._peak_equity == 105_000.0
+        assert store.kill_switch() is False
