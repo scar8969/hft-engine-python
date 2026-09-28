@@ -81,3 +81,37 @@ class TestTradeStats:
     def test_zero_pnl_counts_as_loss(self):
         m = compute_metrics([(0, 100.0), (1, 100.0)], [make_trade(0)], 100.0)
         assert m["win_rate_pct"] == 0.0  # pnl <= 0 is a loss by convention
+
+
+class TestRichMetrics:
+    def test_all_new_fields_present(self):
+        curve = [(i, 100.0 * (1.005 ** i)) for i in range(252)]
+        trades = [make_trade(50), make_trade(30), make_trade(-20)]
+        m = compute_metrics(curve, trades, 100.0)
+        for key in ["sortino", "calmar", "cagr", "profit_factor",
+                    "expectancy", "var_95", "avg_holding_days",
+                    "total_return_pct", "max_drawdown_pct", "sharpe",
+                    "trade_count", "win_rate_pct", "avg_win", "avg_loss",
+                    "final_equity"]:
+            assert key in m, f"missing metric {key}"
+
+    def test_profit_factor_math(self):
+        trades = [make_trade(100), make_trade(50), make_trade(-25), make_trade(-25)]
+        m = compute_metrics([(0, 100.0), (1, 100.0)], trades, 100.0)
+        assert m["profit_factor"] == pytest.approx(150.0 / 50.0)  # 3.0
+
+    def test_expectancy_math(self):
+        trades = [make_trade(100), make_trade(-50)]
+        m = compute_metrics([(0, 100.0), (1, 100.0)], trades, 100.0)
+        assert m["expectancy"] == pytest.approx(25.0)  # (100 - 50) / 2
+
+    def test_cagr_positive_for_growth(self):
+        curve = [(i, 100.0 * (1.01 ** i)) for i in range(252)]  # ~1yr daily
+        m = compute_metrics(curve, [], 100.0)
+        assert m["cagr"] > 0
+
+    def test_var_95_negative_for_losses(self):
+        # mostly losses -> VaR should be negative (worst 5% tail)
+        curve = [(i, 100.0 - i * 0.1) for i in range(100)]
+        m = compute_metrics(curve, [], 100.0)
+        assert m["var_95"] < 0
