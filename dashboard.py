@@ -34,7 +34,7 @@ def _run_backtest_tab():
         capital = st.number_input("Initial capital ($)", 1_000.0, 1_000_000.0, 10_000.0, step=1_000.0)
         commission = st.number_input("Commission ($/order)", 0.0, 50.0, 1.0, step=0.5)
         slippage = st.number_input("Slippage (bps)", 0.0, 100.0, 5.0, step=1.0)
-        run = st.button("Run backtest", type="primary", use_container_width=True)
+        run = st.button("Run backtest", type="primary", width="stretch")
 
     if run or "last_result" not in st.session_state:
         symbols = [s for s in symbol.split(",") if s.strip()]
@@ -78,7 +78,7 @@ def _run_backtest_tab():
             "Final equity": round(m.get("final_equity", 0), 2),
             "Fees $": round(orders.total_fees, 2),
         })
-    st.dataframe(pd.DataFrame(rows), use_container_width=True)
+    st.dataframe(pd.DataFrame(rows), width="stretch")
 
     st.subheader("Equity curves (vs buy & hold)")
     fig, ax = plt.subplots(figsize=(11, 5))
@@ -111,7 +111,7 @@ def _run_backtest_tab():
                 "Exit px": round(t.exit_price, 2),
                 "PnL $": round(t.pnl, 2), "PnL %": round(t.pnl_pct, 2),
             })
-    st.dataframe(pd.DataFrame(trade_rows), use_container_width=True)
+    st.dataframe(pd.DataFrame(trade_rows), width="stretch")
 
 
 def _run_footprint_tab():
@@ -188,7 +188,7 @@ def _run_portfolio_tab():
 
             st.write("**Optimal weights:**")
             wdf = pd.DataFrame({"Symbol": symbols, "Weight %": [round(w * 100, 1) for w in weights]})
-            st.dataframe(wdf, use_container_width=True)
+            st.dataframe(wdf, width="stretch")
 
             port_ret = rets @ weights
             port_eq = (1 + port_ret).cumprod() * 10_000

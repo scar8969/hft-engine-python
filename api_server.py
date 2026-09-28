@@ -199,8 +199,9 @@ def _live(cfg: dict) -> dict:
         _LIVE["engine"] = eng
         _LIVE["thread"] = threading.Thread(target=_live_loop, args=(eng,), daemon=True)
         _LIVE["thread"].start()
-        # wait for the engine to actually be running (warmup + start complete)
-        for _ in range(200):
+        # wait for the engine to actually be running (warmup + start complete);
+        # warmup (yfinance history) can take a while — wait up to 30s
+        for _ in range(300):
             if store.get_meta("engine_state") == "running":
                 break
             time.sleep(0.1)
