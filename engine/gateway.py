@@ -11,8 +11,11 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import time
 from datetime import datetime, timezone
+
+logger = logging.getLogger("hft.gateway")
 
 import websockets
 
@@ -76,7 +79,7 @@ class MarketGateway:
                     last = df.iloc[-1]
                     self._emit(float(last["Close"]))
             except Exception as e:
-                print(f"[gateway] poll error: {e}", flush=True)
+                logger.error("poll error: %s", e)
             await asyncio.sleep(self.poll_interval)
 
     async def run(self):

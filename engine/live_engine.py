@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import time
 from datetime import datetime, timezone
 
@@ -18,6 +19,8 @@ from .latency import LatencyTracker
 from .state import StateStore
 from .strategy import StrategyEngine
 from .models import MarketData, Order
+
+logger = logging.getLogger("hft.live")
 
 
 class LiveEngine:
@@ -65,9 +68,9 @@ class LiveEngine:
                                      datetime.now().strftime("%Y-%m-%d")).connect()
             for b in bars:
                 self.strategy.on_market_data(b)
-            print(f"[live] warmup: {len(bars)} bars loaded for {self.symbol}")
+            logger.info("warmup: %d bars loaded for %s", len(bars), self.symbol)
         except Exception as e:
-            print(f"[live] warmup skipped ({e})")
+            logger.warning("warmup skipped (%s)", e)
 
     # ── risk: auto-kill on drawdown / daily loss ────────────────────
     def _check_drawdown(self, equity: float):
@@ -83,13 +86,13 @@ class LiveEngine:
         if self.max_drawdown_pct > 0:
             dd = (self._peak_equity - equity) / self._peak_equity * 100
             if dd >= self.max_drawdown_pct:
-                print(f"[live] AUTO-KILL: drawdown {dd:.1f}% >= {self.max_drawdown_pct:.1f}%")
+                logger.warning("AUTO-KILL: drawdown %.1f%% >= %.1f%%", dd, self.max_drawdown_pct)
                 self.kill()
                 return
         if self.max_daily_loss_pct > 0 and self._day_start_equity > 0:
             day_loss = (self._day_start_equity - equity) / self._day_start_equity * 100
             if day_loss >= self.max_daily_loss_pct:
-                print(f"[live] AUTO-KILL: daily loss {day_loss:.1f}% >= {self.max_daily_loss_pct:.1f}%")
+                logger.warning("AUTO-KILL: daily loss %.1f%% >= %.1f%%", day_loss, self.max_daily_loss_pct)
                 self.kill()
 
     # ── tick handler ────────────────────────────────────────────────
@@ -140,7 +143,8 @@ class LiveEngine:
         self.store.set_meta("started_at", datetime.now(timezone.utc).isoformat(timespec="seconds"))
         self.store.set_meta("cash", str(float(self.store.get_meta("cash", "100000"))))
         self._task = asyncio.create_task(self.gateway.run())
-        print(f"[live] engine running: {self.symbol} strategy={self.strategy.strategy} backend={self.broker.backend}")
+        logger.info("engine running: %s strategy=%s backend=%s",
+                    self.symbol, self.strategy.strategy, self.broker.backend)
         # keep the loop alive until stop() is called
         while self._running:
             await asyncio.sleep(0.5)
@@ -155,7 +159,7 @@ class LiveEngine:
             except (asyncio.CancelledError, asyncio.TimeoutError):
                 pass
         self.store.set_meta("engine_state", "stopped")
-        print("[live] engine stopped")
+        logger.info("engine stopped")
 
     async def flatten(self):
         """Close all positions at market."""
@@ -165,12 +169,12 @@ class LiveEngine:
         if pos and pos["qty"] != 0:
             self.broker.flatten(self.symbol, self._last_price)
             self.store.set_meta("engine_state", "flattened")
-            print(f"[live] flattened {self.symbol}")
+            logger.info("flattened %s", self.symbol)
 
     def kill(self):
         self.store.set_kill_switch(True)
         self.store.set_meta("engine_state", "killed")
-        print("[live] KILL SWITCH ENGAGED — no new orders")
+        logger.warning("KILL SWITCH ENGAGED — no new orders")
 
     def status(self) -> dict:
         return {

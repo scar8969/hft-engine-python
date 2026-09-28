@@ -8,9 +8,14 @@ Ctrl+C flattens positions and shuts down gracefully.
 """
 import argparse
 import asyncio
+import logging
 
 from engine.live_engine import LiveEngine
 from engine.state import StateStore
+
+logging.basicConfig(level=logging.INFO,
+                    format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+logger = logging.getLogger("hft.cli")
 
 
 async def main():
@@ -45,12 +50,13 @@ async def main():
     )
 
     await engine.start()
-    print(f"=== LIVE {args.symbol} ({args.strategy}) backend={args.backend} gateway={args.gateway} — Ctrl+C to flatten+stop ===")
+    logger.info("=== LIVE %s (%s) backend=%s gateway=%s — Ctrl+C to flatten+stop ===",
+                args.symbol, args.strategy, args.backend, args.gateway)
     try:
         while True:
             await asyncio.sleep(1)
     except KeyboardInterrupt:
-        print("\n[ctrl-c] flattening + stopping...")
+        logger.info("[ctrl-c] flattening + stopping...")
         await engine.flatten()
         await engine.stop()
         store.close()
