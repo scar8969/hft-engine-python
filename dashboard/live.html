@@ -243,6 +243,13 @@ async function refresh() {
   try { render(await api("status")); } catch (e) { /* server restarting */ }
 }
 
+// SSE live stream — push updates every 1s instead of 2s polling
+const es = new EventSource("/api/live/stream");
+es.onmessage = (ev) => {
+  try { render(JSON.parse(ev.data)); } catch (e) { /* partial frame */ }
+};
+es.onerror = () => { /* server restarting — EventSource auto-reconnects */ };
+
 $("start-btn").onclick = async () => {
   $("start-btn").textContent = "Starting…";
   const d = await api("start", {symbol: $("sym").value.trim().toUpperCase() || "AAPL",
@@ -256,7 +263,6 @@ $("kill-btn").onclick = async () => render(await api("kill"));
 $("resume-btn").onclick = async () => render(await api("resume"));
 
 refresh();
-setInterval(refresh, 2000);
 </script>
 </body>
 </html>

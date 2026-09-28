@@ -31,6 +31,8 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/api/health":
             return self._json(200, {"ok": True, "engine": "hft-engine"})
+        if self.path.startswith("/api/live/stream"):
+            return self._stream_live()
         # static files
         rel = self.path.split("?")[0].lstrip("/")
         if not rel:
@@ -52,6 +54,25 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
+
+    def _stream_live(self):
+        """SSE stream: push the live engine status every 1s."""
+        import time
+        from api.handlers import live as live_handler
+        self.send_response(200)
+        self.send_header("Content-Type", "text/event-stream")
+        self.send_header("Cache-Control", "no-cache")
+        self.send_header("Connection", "keep-alive")
+        self.end_headers()
+        try:
+            while True:
+                payload = live_handler({"action": "status"})
+                body = f"data: {json.dumps(payload)}\n\n".encode()
+                self.wfile.write(body)
+                self.wfile.flush()
+                time.sleep(1)
+        except (BrokenPipeError, ConnectionResetError):
+            pass
 
     def do_POST(self):
         try:
