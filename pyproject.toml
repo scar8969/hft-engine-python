@@ -16,6 +16,7 @@ dependencies = [
     "yfinance",
     "matplotlib",
     "websockets",
+    "pyarrow",
 ]
 
 [project.optional-dependencies]

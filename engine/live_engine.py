@@ -126,6 +126,13 @@ class LiveEngine:
             return
         if order.price * order.volume > self.max_exposure:
             return
+        # cash-sufficiency: BUY must not exceed available cash (short frees cash)
+        if order.side.value == "BUY":
+            cash = float(self.store.get_meta("cash", "100000"))
+            if order.price * order.volume > cash:
+                logger.warning("reject BUY %s: order value %.2f > cash %.2f",
+                               self.symbol, order.price * order.volume, cash)
+                return
 
         self._last_signal_ts = time.time()
         client_id = f"{self.symbol}-{order.side.value}-{int(time.time() * 1000)}"
