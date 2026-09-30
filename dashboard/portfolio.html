@@ -279,7 +279,7 @@ function drawDonut(perSymbol) {
   const leg = $("donut-legend");
   leg.innerHTML = perSymbol.map((r, i) => {
     const w = weights[i] / wSum * 100;
-    return `<div class="flex items-center justify-between"><span class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-sm" style="background:${COLORS[i % COLORS.length]}" inline-block></span>${r.metrics.symbol}</span><span class="font-mono">${w.toFixed(0)}%</span></div>`;
+    return `<div class="flex items-center justify-between"><span class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-sm" style="background:${COLORS[i % COLORS.length]}" inline-block></span>${r.symbol}</span><span class="font-mono">${w.toFixed(0)}%</span></div>`;
   }).join("");
 }
 
@@ -308,15 +308,15 @@ async function loadPortfolio() {
     const d = await r.json();
     if (!r.ok) throw new Error(d.error || "portfolio failed");
     drawDonut(d.per_symbol);
-    drawPfChart(d.combined);
-    $("pf-total").textContent = fmtMoney(capital);
-    $("pf-count").textContent = d.symbols.length + " stocks";
-    const m = d.combined_metrics;
-    if (m && m.total_return_pct !== undefined) {
-      $("pf-return").textContent = (m.total_return_pct >= 0 ? "+" : "") + m.total_return_pct.toFixed(1) + "%";
-      toast(`Portfolio: ${m.total_return_pct >= 0 ? "+" : ""}${m.total_return_pct.toFixed(2)}% return, Sharpe ${m.sharpe.toFixed(2)}`, true);
-    }
-  } catch (e) {
+        drawPfChart(d.combined);
+        $("pf-total").textContent = fmtMoney(capital);
+        $("pf-count").textContent = d.symbols.length + " stocks";
+        const m = d.metrics;
+        if (m && m.total_return_pct !== undefined) {
+          $("pf-return").textContent = (m.total_return_pct >= 0 ? "+" : "") + m.total_return_pct.toFixed(1) + "%";
+          toast(`Portfolio: ${m.total_return_pct >= 0 ? "+" : ""}${m.total_return_pct.toFixed(2)}% return, Sharpe ${m.sharpe.toFixed(2)}`, true);
+        }
+      } catch (e) {
     toast("Error: " + e.message, false);
   }
 }

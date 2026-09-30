@@ -271,13 +271,15 @@ async function loadStrategies() {
     const d = await r.json();
     if (!r.ok) throw new Error(d.error || "strategies failed");
     const idMap = {sma: "sma", rsi: "rsi", momentum: "momentum", threshold: "threshold"};
-    for (const c of d.cards) {
-      const k = idMap[c.id];
+    for (const k of Object.keys(idMap)) {
+      const c = d.strategies[k];
+      if (!c) continue;
       const wr = $("wr-" + k), gr = $("gr-" + k);
-      if (wr) wr.textContent = c.win_rate + "%";
-      if (gr) gr.textContent = (c.total_return >= 0 ? "+" : "") + c.total_return + "%";
+      if (wr) wr.textContent = c.win_rate_pct + "%";
+            if (gr) gr.textContent = (c.return_pct >= 0 ? "+" : "") + c.return_pct + "%";
     }
-    drawCompare(d.curves);
+    drawCompare({sma: d.strategies.sma.equity, rsi: d.strategies.rsi.equity,
+                 momentum: d.strategies.momentum.equity, threshold: d.strategies.threshold.equity});
     toast("Strategies loaded", true);
   } catch (e) {
     toast("Error: " + e.message, false);
